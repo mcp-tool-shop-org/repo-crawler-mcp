@@ -1,0 +1,57 @@
+{
+  "name": "@mcptoolshop/repo-crawler-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that crawls GitHub repos and extracts structured data for AI agents",
+  "type": "module",
+  "main": "./build/index.js",
+  "bin": {
+    "repo-crawler-mcp": "./build/index.js"
+  },
+  "files": [
+    "build",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node ./build/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf build",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "github",
+    "crawler",
+    "repo",
+    "model-context-protocol"
+  ],
+  "author": "mcp-tool-shop",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcp-tool-shop-org/repo-crawler-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mcp-tool-shop-org/repo-crawler-mcp/issues"
+  },
+  "homepage": "https://github.com/mcp-tool-shop-org/repo-crawler-mcp#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@octokit/rest": "^21.0.0",
+    "@octokit/plugin-throttling": "^9.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
