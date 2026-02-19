@@ -131,6 +131,46 @@ function exportCSV(data: Record<string, unknown>, sections?: string[]): string {
     }
   }
 
+  // Tier 3: Security
+  const t3 = data.tier3Data as Record<string, unknown> | undefined;
+  if (t3) {
+    if (shouldInclude('dependabotAlerts', sections) && Array.isArray(t3.dependabotAlerts) && t3.dependabotAlerts.length > 0) {
+      parts.push('# Dependabot Alerts');
+      parts.push(csvRow(['number', 'state', 'severity', 'package', 'ecosystem', 'summary', 'patched_version', 'cve_id']));
+      for (const a of t3.dependabotAlerts as Array<Record<string, unknown>>) {
+        parts.push(csvRow([a.number, a.state, a.severity, a.package_name, a.package_ecosystem, a.summary, a.patched_version ?? '', a.cve_id ?? '']));
+      }
+      parts.push('');
+    }
+
+    if (shouldInclude('securityAdvisories', sections) && Array.isArray(t3.securityAdvisories) && t3.securityAdvisories.length > 0) {
+      parts.push('# Security Advisories');
+      parts.push(csvRow(['ghsa_id', 'cve_id', 'severity', 'state', 'summary', 'published_at']));
+      for (const a of t3.securityAdvisories as Array<Record<string, unknown>>) {
+        parts.push(csvRow([a.ghsa_id, a.cve_id ?? '', a.severity, a.state, a.summary, a.published_at ?? '']));
+      }
+      parts.push('');
+    }
+
+    if (shouldInclude('codeScanningAlerts', sections) && Array.isArray(t3.codeScanningAlerts) && t3.codeScanningAlerts.length > 0) {
+      parts.push('# Code Scanning Alerts');
+      parts.push(csvRow(['number', 'state', 'severity', 'rule_id', 'tool', 'description']));
+      for (const a of t3.codeScanningAlerts as Array<Record<string, unknown>>) {
+        parts.push(csvRow([a.number, a.state, a.severity, a.rule_id, a.tool_name, a.description]));
+      }
+      parts.push('');
+    }
+
+    if (shouldInclude('secretScanningAlerts', sections) && Array.isArray(t3.secretScanningAlerts) && t3.secretScanningAlerts.length > 0) {
+      parts.push('# Secret Scanning Alerts');
+      parts.push(csvRow(['number', 'state', 'secret_type', 'display_name', 'resolution', 'created_at']));
+      for (const a of t3.secretScanningAlerts as Array<Record<string, unknown>>) {
+        parts.push(csvRow([a.number, a.state, a.secret_type, a.secret_type_display_name, a.resolution ?? '', a.created_at]));
+      }
+      parts.push('');
+    }
+  }
+
   if (parts.length === 0) {
     return '# No data to export';
   }
@@ -248,6 +288,62 @@ function exportMarkdown(data: Record<string, unknown>, sections?: string[]): str
       lines.push(mdTableSeparator(6));
       for (const m of t2md.milestones as Array<Record<string, unknown>>) {
         lines.push(mdTableRow([m.number, m.title, m.state, m.open_issues, m.closed_issues, m.due_on ?? '-']));
+      }
+      lines.push('');
+    }
+  }
+
+  // Tier 3: Security
+  const t3md = data.tier3Data as Record<string, unknown> | undefined;
+  if (t3md) {
+    if (shouldInclude('dependabotAlerts', sections) && Array.isArray(t3md.dependabotAlerts) && t3md.dependabotAlerts.length > 0) {
+      lines.push('## Dependabot Alerts');
+      lines.push(mdTableRow(['#', 'Severity', 'Package', 'Ecosystem', 'Summary', 'Patched']));
+      lines.push(mdTableSeparator(6));
+      for (const a of t3md.dependabotAlerts as Array<Record<string, unknown>>) {
+        lines.push(mdTableRow([a.number, a.severity, a.package_name, a.package_ecosystem, String(a.summary ?? '').slice(0, 60), a.patched_version ?? '-']));
+      }
+      lines.push('');
+    }
+
+    if (shouldInclude('securityAdvisories', sections) && Array.isArray(t3md.securityAdvisories) && t3md.securityAdvisories.length > 0) {
+      lines.push('## Security Advisories');
+      lines.push(mdTableRow(['GHSA', 'CVE', 'Severity', 'State', 'Summary']));
+      lines.push(mdTableSeparator(5));
+      for (const a of t3md.securityAdvisories as Array<Record<string, unknown>>) {
+        lines.push(mdTableRow([a.ghsa_id, a.cve_id ?? '-', a.severity, a.state, String(a.summary ?? '').slice(0, 60)]));
+      }
+      lines.push('');
+    }
+
+    if (shouldInclude('codeScanningAlerts', sections) && Array.isArray(t3md.codeScanningAlerts) && t3md.codeScanningAlerts.length > 0) {
+      lines.push('## Code Scanning Alerts');
+      lines.push(mdTableRow(['#', 'Severity', 'Rule', 'Tool', 'Description']));
+      lines.push(mdTableSeparator(5));
+      for (const a of t3md.codeScanningAlerts as Array<Record<string, unknown>>) {
+        lines.push(mdTableRow([a.number, a.severity, a.rule_id, a.tool_name, String(a.description ?? '').slice(0, 60)]));
+      }
+      lines.push('');
+    }
+
+    if (shouldInclude('secretScanningAlerts', sections) && Array.isArray(t3md.secretScanningAlerts) && t3md.secretScanningAlerts.length > 0) {
+      lines.push('## Secret Scanning Alerts');
+      lines.push(mdTableRow(['#', 'State', 'Type', 'Resolution', 'Created']));
+      lines.push(mdTableSeparator(5));
+      for (const a of t3md.secretScanningAlerts as Array<Record<string, unknown>>) {
+        lines.push(mdTableRow([a.number, a.state, a.secret_type_display_name, a.resolution ?? '-', String(a.created_at ?? '').slice(0, 10)]));
+      }
+      lines.push('');
+    }
+
+    // Permission summary
+    const perms = t3md.permissions as Record<string, string> | undefined;
+    if (perms && Object.keys(perms).length > 0) {
+      lines.push('## Security Permissions');
+      lines.push(mdTableRow(['Section', 'Status']));
+      lines.push(mdTableSeparator(2));
+      for (const [section, status] of Object.entries(perms)) {
+        lines.push(mdTableRow([section, status]));
       }
       lines.push('');
     }

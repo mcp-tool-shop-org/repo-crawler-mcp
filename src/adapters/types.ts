@@ -1,6 +1,7 @@
 import type {
   Tier1Data,
   Tier2Data,
+  Tier3Data,
   RepoMetadata,
   RateLimitInfo,
 } from '../types.js';
@@ -28,10 +29,17 @@ export interface OrgListOptions {
   limit?: number;
 }
 
+export interface Tier3FetchOptions {
+  sections?: string[];
+  excludeSections?: string[];
+  alertLimit?: number;
+}
+
 export interface PlatformAdapter {
   readonly platform: string;
   fetchTier1(owner: string, repo: string, options?: FetchOptions): Promise<Tier1Data>;
   fetchTier2(owner: string, repo: string, options?: Tier2FetchOptions): Promise<Tier2Data>;
+  fetchTier3(owner: string, repo: string, options?: Tier3FetchOptions): Promise<Tier3Data>;
   listOrgRepos(org: string, options?: OrgListOptions): Promise<RepoMetadata[]>;
   getRateLimit(): Promise<RateLimitInfo>;
 }

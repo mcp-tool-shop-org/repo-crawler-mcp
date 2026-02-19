@@ -262,6 +262,114 @@ export const TIER2_SECTIONS = [
 
 export type Tier2Section = (typeof TIER2_SECTIONS)[number];
 
+// ─── Tier 3 Data Interfaces (Security/Admin) ─────────────────────────────────
+
+export type PermissionStatus = 'granted' | 'denied' | 'not_enabled';
+
+export interface DependabotAlert {
+  number: number;
+  state: string;
+  severity: string;
+  summary: string;
+  package_name: string;
+  package_ecosystem: string;
+  vulnerable_version_range: string;
+  patched_version: string | null;
+  created_at: string;
+  updated_at: string;
+  fixed_at: string | null;
+  dismissed_at: string | null;
+  html_url: string;
+  cve_id: string | null;
+  ghsa_id: string | null;
+}
+
+export interface SecurityAdvisory {
+  ghsa_id: string;
+  cve_id: string | null;
+  summary: string;
+  description_preview: string;
+  severity: string;
+  state: string;
+  published_at: string | null;
+  updated_at: string;
+  withdrawn_at: string | null;
+  html_url: string;
+  vulnerabilities: Array<{
+    package: { ecosystem: string; name: string };
+    severity: string;
+    vulnerable_version_range: string;
+    patched_versions: string | null;
+  }>;
+}
+
+export interface SBOMPackage {
+  name: string;
+  version: string | null;
+  ecosystem: string;
+  license: string | null;
+  relationship: string;
+}
+
+export interface SBOMData {
+  spdx_id: string;
+  name: string;
+  created_at: string;
+  packages: SBOMPackage[];
+}
+
+export interface CodeScanningAlert {
+  number: number;
+  state: string;
+  severity: string;
+  description: string;
+  rule_id: string;
+  rule_description: string;
+  tool_name: string;
+  created_at: string;
+  updated_at: string;
+  fixed_at: string | null;
+  dismissed_at: string | null;
+  html_url: string;
+  most_recent_instance: {
+    ref: string;
+    path: string;
+    start_line: number;
+  } | null;
+}
+
+export interface SecretScanningAlert {
+  number: number;
+  state: string;
+  secret_type: string;
+  secret_type_display_name: string;
+  resolution: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+  push_protection_bypassed: boolean;
+}
+
+export interface Tier3Data {
+  dependabotAlerts: DependabotAlert[];
+  securityAdvisories: SecurityAdvisory[];
+  sbom: SBOMData | null;
+  codeScanningAlerts: CodeScanningAlert[];
+  secretScanningAlerts: SecretScanningAlert[];
+  permissions: Record<string, PermissionStatus>;
+}
+
+export const TIER3_SECTIONS = [
+  'dependabotAlerts',
+  'securityAdvisories',
+  'sbom',
+  'codeScanningAlerts',
+  'secretScanningAlerts',
+] as const;
+
+export type Tier3Section = (typeof TIER3_SECTIONS)[number];
+
 // ─── Crawl Result Wrapper ─────────────────────────────────────────────────────
 
 export interface CrawlResult {
@@ -272,6 +380,7 @@ export interface CrawlResult {
   sections: string[];
   data: Tier1Data;
   tier2Data?: Tier2Data;
+  tier3Data?: Tier3Data;
 }
 
 // ─── Zod Input Schemas ────────────────────────────────────────────────────────

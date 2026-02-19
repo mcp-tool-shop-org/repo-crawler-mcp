@@ -25,7 +25,7 @@ function asyncIteratorFrom<T>(data: T[]) {
 }
 
 // Use vi.hoisted so these are available inside the hoisted vi.mock factory
-const { mockGetViews, mockGetClones, mockPaginateIterator, mockPaginate } = vi.hoisted(() => {
+const { mockGetViews, mockGetClones, mockPaginateIterator, mockPaginate, mockRequest } = vi.hoisted(() => {
   const mockGetViews = vi.fn().mockResolvedValue({
     data: { count: 100, uniques: 50, views: [{ timestamp: '2024-06-01T00:00:00Z', count: 10, uniques: 5 }] },
   });
@@ -37,7 +37,8 @@ const { mockGetViews, mockGetClones, mockPaginateIterator, mockPaginate } = vi.h
     vi.fn().mockResolvedValue([]),
     { iterator: mockPaginateIterator },
   );
-  return { mockGetViews, mockGetClones, mockPaginateIterator, mockPaginate };
+  const mockRequest = vi.fn().mockResolvedValue({ data: [] });
+  return { mockGetViews, mockGetClones, mockPaginateIterator, mockPaginate, mockRequest };
 });
 
 // Mock Octokit at module level
@@ -142,6 +143,7 @@ vi.mock('@octokit/rest', () => {
       },
     },
     paginate: mockPaginate,
+    request: mockRequest,
   };
 
   return {
@@ -169,6 +171,7 @@ describe('GitHubAdapter', () => {
     mockGetClones.mockResolvedValue({
       data: { count: 30, uniques: 15, clones: [{ timestamp: '2024-06-01T00:00:00Z', count: 3, uniques: 2 }] },
     });
+    mockRequest.mockResolvedValue({ data: [] });
   });
 
   describe('Tier 1', () => {
@@ -382,6 +385,197 @@ describe('GitHubAdapter', () => {
 
       expect(data.issues).toHaveLength(1);
       expect(data.issues[0].body_preview.length).toBe(500);
+    });
+  });
+
+  describe('Tier 3', () => {
+    it('fetches all Tier 3 sections with mock data', async () => {
+      let requestCallCount = 0;
+      mockRequest.mockImplementation((route: string) => {
+        requestCallCount++;
+        if (route.includes('dependabot/alerts')) {
+          return Promise.resolve({
+            data: [{
+              number: 1,
+              state: 'open',
+              dependency: { package: { name: 'lodash', ecosystem: 'npm' } },
+              security_vulnerability: { severity: 'high', vulnerable_version_range: '< 4.17.21', first_patched_version: { identifier: '4.17.21' } },
+              security_advisory: { summary: 'Prototype Pollution in lodash', severity: 'high', identifiers: [{ type: 'CVE', value: 'CVE-2021-23337' }, { type: 'GHSA', value: 'GHSA-35jh-r3h4-6jhm' }] },
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-06-01T00:00:00Z',
+              fixed_at: null,
+              dismissed_at: null,
+              html_url: 'https://github.com/owner/test-repo/security/dependabot/1',
+            }],
+          });
+        }
+        if (route.includes('security-advisories')) {
+          return Promise.resolve({
+            data: [{
+              ghsa_id: 'GHSA-xxxx-yyyy-zzzz',
+              cve_id: 'CVE-2024-1234',
+              summary: 'Test advisory',
+              description: 'A test security advisory',
+              severity: 'critical',
+              state: 'published',
+              published_at: '2024-03-01T00:00:00Z',
+              updated_at: '2024-03-01T00:00:00Z',
+              withdrawn_at: null,
+              html_url: 'https://github.com/owner/test-repo/security/advisories/GHSA-xxxx-yyyy-zzzz',
+              vulnerabilities: [{
+                package: { ecosystem: 'npm', name: 'test-pkg' },
+                severity: 'critical',
+                vulnerable_version_range: '< 2.0.0',
+                first_patched_version: { identifier: '2.0.0' },
+              }],
+            }],
+          });
+        }
+        if (route.includes('dependency-graph/sbom')) {
+          return Promise.resolve({
+            data: {
+              sbom: {
+                spdxVersion: 'SPDX-2.3',
+                name: 'owner/test-repo',
+                creationInfo: { created: '2024-06-01T00:00:00Z' },
+                packages: [{
+                  name: 'npm:lodash',
+                  versionInfo: '4.17.21',
+                  licenseDeclared: 'MIT',
+                  externalRefs: [{ referenceCategory: 'PACKAGE-MANAGER', referenceType: 'npm' }],
+                  downloadLocation: 'https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz',
+                }],
+              },
+            },
+          });
+        }
+        if (route.includes('code-scanning/alerts')) {
+          return Promise.resolve({
+            data: [{
+              number: 1,
+              state: 'open',
+              rule: { id: 'js/xss', description: 'Cross-site scripting', severity: 'error', security_severity_level: 'high' },
+              tool: { name: 'CodeQL' },
+              most_recent_instance: { ref: 'refs/heads/main', location: { path: 'src/app.js', start_line: 42 } },
+              created_at: '2024-05-01T00:00:00Z',
+              updated_at: '2024-05-01T00:00:00Z',
+              fixed_at: null,
+              dismissed_at: null,
+              html_url: 'https://github.com/owner/test-repo/security/code-scanning/1',
+            }],
+          });
+        }
+        if (route.includes('secret-scanning/alerts')) {
+          return Promise.resolve({
+            data: [{
+              number: 1,
+              state: 'open',
+              secret_type: 'github_personal_access_token',
+              secret_type_display_name: 'GitHub Personal Access Token',
+              resolution: null,
+              resolved_at: null,
+              created_at: '2024-04-01T00:00:00Z',
+              updated_at: '2024-04-01T00:00:00Z',
+              html_url: 'https://github.com/owner/test-repo/security/secret-scanning/1',
+              push_protection_bypassed: false,
+            }],
+          });
+        }
+        return Promise.resolve({ data: [] });
+      });
+
+      const data = await adapter.fetchTier3('owner', 'test-repo');
+
+      // Dependabot
+      expect(data.dependabotAlerts).toHaveLength(1);
+      expect(data.dependabotAlerts[0].package_name).toBe('lodash');
+      expect(data.dependabotAlerts[0].severity).toBe('high');
+      expect(data.dependabotAlerts[0].cve_id).toBe('CVE-2021-23337');
+      expect(data.dependabotAlerts[0].patched_version).toBe('4.17.21');
+
+      // Security Advisories
+      expect(data.securityAdvisories).toHaveLength(1);
+      expect(data.securityAdvisories[0].ghsa_id).toBe('GHSA-xxxx-yyyy-zzzz');
+      expect(data.securityAdvisories[0].severity).toBe('critical');
+      expect(data.securityAdvisories[0].vulnerabilities).toHaveLength(1);
+
+      // SBOM
+      expect(data.sbom).toBeDefined();
+      expect(data.sbom!.packages).toHaveLength(1);
+      expect(data.sbom!.packages[0].name).toBe('npm:lodash');
+      expect(data.sbom!.packages[0].license).toBe('MIT');
+
+      // Code Scanning
+      expect(data.codeScanningAlerts).toHaveLength(1);
+      expect(data.codeScanningAlerts[0].rule_id).toBe('js/xss');
+      expect(data.codeScanningAlerts[0].tool_name).toBe('CodeQL');
+      expect(data.codeScanningAlerts[0].most_recent_instance?.path).toBe('src/app.js');
+
+      // Secret Scanning
+      expect(data.secretScanningAlerts).toHaveLength(1);
+      expect(data.secretScanningAlerts[0].secret_type).toBe('github_personal_access_token');
+
+      // Permissions — all should be 'granted'
+      expect(data.permissions.dependabotAlerts).toBe('granted');
+      expect(data.permissions.securityAdvisories).toBe('granted');
+      expect(data.permissions.sbom).toBe('granted');
+      expect(data.permissions.codeScanningAlerts).toBe('granted');
+      expect(data.permissions.secretScanningAlerts).toBe('granted');
+    });
+
+    it('respects Tier 3 section filtering', async () => {
+      mockRequest.mockResolvedValue({
+        data: {
+          sbom: {
+            spdxVersion: 'SPDX-2.3',
+            name: 'test',
+            creationInfo: { created: '2024-01-01T00:00:00Z' },
+            packages: [],
+          },
+        },
+      });
+
+      const data = await adapter.fetchTier3('owner', 'test-repo', {
+        sections: ['sbom'],
+      });
+
+      expect(data.sbom).toBeDefined();
+      expect(data.dependabotAlerts).toEqual([]);
+      expect(data.securityAdvisories).toEqual([]);
+      expect(data.codeScanningAlerts).toEqual([]);
+      expect(data.secretScanningAlerts).toEqual([]);
+    });
+
+    it('gracefully handles 403 with permission tracking', async () => {
+      const err403 = Object.assign(new Error('Forbidden'), { status: 403 });
+      mockRequest.mockRejectedValue(err403);
+
+      const data = await adapter.fetchTier3('owner', 'test-repo');
+
+      expect(data.dependabotAlerts).toEqual([]);
+      expect(data.securityAdvisories).toEqual([]);
+      expect(data.sbom).toBeNull();
+      expect(data.codeScanningAlerts).toEqual([]);
+      expect(data.secretScanningAlerts).toEqual([]);
+
+      // All should be 'denied'
+      expect(data.permissions.dependabotAlerts).toBe('denied');
+      expect(data.permissions.securityAdvisories).toBe('denied');
+      expect(data.permissions.sbom).toBe('denied');
+      expect(data.permissions.codeScanningAlerts).toBe('denied');
+      expect(data.permissions.secretScanningAlerts).toBe('denied');
+    });
+
+    it('handles 404 as not_enabled', async () => {
+      const err404 = Object.assign(new Error('Not Found'), { status: 404 });
+      mockRequest.mockRejectedValue(err404);
+
+      const data = await adapter.fetchTier3('owner', 'test-repo', {
+        sections: ['dependabotAlerts', 'codeScanningAlerts'],
+      });
+
+      expect(data.permissions.dependabotAlerts).toBe('not_enabled');
+      expect(data.permissions.codeScanningAlerts).toBe('not_enabled');
     });
   });
 });

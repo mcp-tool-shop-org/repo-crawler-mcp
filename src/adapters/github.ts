@@ -1,10 +1,11 @@
 import { Octokit } from '@octokit/rest';
 import { throttling } from '@octokit/plugin-throttling';
 import { log } from '../utils/logger.js';
-import { TIER1_SECTIONS, TIER2_SECTIONS } from '../types.js';
+import { TIER1_SECTIONS, TIER2_SECTIONS, TIER3_SECTIONS } from '../types.js';
 import type {
   Tier1Data,
   Tier2Data,
+  Tier3Data,
   RepoMetadata,
   FileTreeEntry,
   ReadmeContent,
@@ -18,13 +19,20 @@ import type {
   RateLimitInfo,
   Tier1Section,
   Tier2Section,
+  Tier3Section,
   TrafficData,
   IssueDetail,
   PullRequestDetail,
   MilestoneInfo,
   DiscussionInfo,
+  PermissionStatus,
+  DependabotAlert,
+  SecurityAdvisory,
+  SBOMData,
+  CodeScanningAlert,
+  SecretScanningAlert,
 } from '../types.js';
-import type { PlatformAdapter, FetchOptions, Tier2FetchOptions, OrgListOptions } from './types.js';
+import type { PlatformAdapter, FetchOptions, Tier2FetchOptions, Tier3FetchOptions, OrgListOptions } from './types.js';
 
 const ThrottledOctokit = Octokit.plugin(throttling);
 
@@ -70,6 +78,21 @@ function resolveTier2Sections(options?: Tier2FetchOptions): Set<Tier2Section> {
   if (options?.excludeSections) {
     for (const s of options.excludeSections) {
       sections.delete(s as Tier2Section);
+    }
+  }
+  return sections;
+}
+
+function resolveTier3Sections(options?: Tier3FetchOptions): Set<Tier3Section> {
+  let sections: Set<Tier3Section>;
+  if (options?.sections && options.sections.length > 0) {
+    sections = new Set(options.sections.filter(s => (TIER3_SECTIONS as readonly string[]).includes(s)) as Tier3Section[]);
+  } else {
+    sections = new Set([...TIER3_SECTIONS]);
+  }
+  if (options?.excludeSections) {
+    for (const s of options.excludeSections) {
+      sections.delete(s as Tier3Section);
     }
   }
   return sections;
@@ -549,6 +572,231 @@ export class GitHubAdapter implements PlatformAdapter {
     // For now, return empty with a log note. Will implement with @octokit/graphql in a future update.
     log.info('Discussions require GraphQL API — not yet implemented, returning empty');
     return [];
+  }
+
+  // ─── Tier 3 Fetch Methods (Security/Admin) ─────────────────────────────────
+
+  async fetchTier3(owner: string, repo: string, options?: Tier3FetchOptions): Promise<Tier3Data> {
+    const sections = resolveTier3Sections(options);
+    const limit = options?.alertLimit ?? 100;
+    const permissions: Record<string, PermissionStatus> = {};
+
+    const dependabotAlerts = sections.has('dependabotAlerts')
+      ? await this.fetchDependabotAlerts(owner, repo, limit, permissions)
+      : [];
+    const securityAdvisories = sections.has('securityAdvisories')
+      ? await this.fetchSecurityAdvisories(owner, repo, limit, permissions)
+      : [];
+    const sbom = sections.has('sbom')
+      ? await this.fetchSBOM(owner, repo, permissions)
+      : null;
+    const codeScanningAlerts = sections.has('codeScanningAlerts')
+      ? await this.fetchCodeScanningAlerts(owner, repo, limit, permissions)
+      : [];
+    const secretScanningAlerts = sections.has('secretScanningAlerts')
+      ? await this.fetchSecretScanningAlerts(owner, repo, limit, permissions)
+      : [];
+
+    return { dependabotAlerts, securityAdvisories, sbom, codeScanningAlerts, secretScanningAlerts, permissions };
+  }
+
+  private async fetchDependabotAlerts(
+    owner: string, repo: string, limit: number, permissions: Record<string, PermissionStatus>,
+  ): Promise<DependabotAlert[]> {
+    try {
+      const { data } = await this.octokit.request(
+        'GET /repos/{owner}/{repo}/dependabot/alerts',
+        { owner, repo, per_page: Math.min(limit, 100), state: 'open', sort: 'updated', direction: 'desc' },
+      );
+      permissions.dependabotAlerts = 'granted';
+      return (data as Array<Record<string, unknown>>).slice(0, limit).map(a => {
+        const dep = a.dependency as Record<string, unknown> | undefined;
+        const pkg = dep?.package as Record<string, unknown> | undefined;
+        const vuln = a.security_vulnerability as Record<string, unknown> | undefined;
+        const advisory = a.security_advisory as Record<string, unknown> | undefined;
+        const firstPV = vuln?.first_patched_version as Record<string, unknown> | null | undefined;
+        const ids = Array.isArray(advisory?.identifiers) ? advisory.identifiers as Array<Record<string, unknown>> : [];
+        return {
+          number: Number(a.number),
+          state: String(a.state ?? ''),
+          severity: String(vuln?.severity ?? advisory?.severity ?? 'unknown'),
+          summary: String(advisory?.summary ?? ''),
+          package_name: String(pkg?.name ?? ''),
+          package_ecosystem: String(pkg?.ecosystem ?? ''),
+          vulnerable_version_range: String(vuln?.vulnerable_version_range ?? ''),
+          patched_version: firstPV ? String(firstPV.identifier ?? '') : null,
+          created_at: String(a.created_at ?? ''),
+          updated_at: String(a.updated_at ?? ''),
+          fixed_at: a.fixed_at ? String(a.fixed_at) : null,
+          dismissed_at: a.dismissed_at ? String(a.dismissed_at) : null,
+          html_url: String(a.html_url ?? ''),
+          cve_id: ids.find(i => i.type === 'CVE')?.value as string ?? null,
+          ghsa_id: ids.find(i => i.type === 'GHSA')?.value as string ?? null,
+        };
+      });
+    } catch (e) {
+      this.handleSecurityPermission(e, 'dependabotAlerts', owner, repo, permissions);
+      return [];
+    }
+  }
+
+  private async fetchSecurityAdvisories(
+    owner: string, repo: string, limit: number, permissions: Record<string, PermissionStatus>,
+  ): Promise<SecurityAdvisory[]> {
+    try {
+      const { data } = await this.octokit.request(
+        'GET /repos/{owner}/{repo}/security-advisories',
+        { owner, repo, per_page: Math.min(limit, 100) },
+      );
+      permissions.securityAdvisories = 'granted';
+      return (data as Array<Record<string, unknown>>).slice(0, limit).map(a => {
+        const vulns = Array.isArray(a.vulnerabilities) ? a.vulnerabilities as Array<Record<string, unknown>> : [];
+        return {
+          ghsa_id: String(a.ghsa_id ?? ''),
+          cve_id: a.cve_id ? String(a.cve_id) : null,
+          summary: String(a.summary ?? ''),
+          description_preview: a.description ? String(a.description).slice(0, 500) : '',
+          severity: String(a.severity ?? 'unknown'),
+          state: String(a.state ?? ''),
+          published_at: a.published_at ? String(a.published_at) : null,
+          updated_at: String(a.updated_at ?? ''),
+          withdrawn_at: a.withdrawn_at ? String(a.withdrawn_at) : null,
+          html_url: String(a.html_url ?? ''),
+          vulnerabilities: vulns.map(v => {
+            const vPkg = v.package as Record<string, unknown> | undefined;
+            const fp = v.first_patched_version as Record<string, unknown> | null | undefined;
+            return {
+              package: {
+                ecosystem: String(vPkg?.ecosystem ?? ''),
+                name: String(vPkg?.name ?? ''),
+              },
+              severity: String(v.severity ?? ''),
+              vulnerable_version_range: String(v.vulnerable_version_range ?? ''),
+              patched_versions: fp ? String(fp.identifier ?? '') : null,
+            };
+          }),
+        };
+      });
+    } catch (e) {
+      this.handleSecurityPermission(e, 'securityAdvisories', owner, repo, permissions);
+      return [];
+    }
+  }
+
+  private async fetchSBOM(
+    owner: string, repo: string, permissions: Record<string, PermissionStatus>,
+  ): Promise<SBOMData | null> {
+    try {
+      const { data } = await this.octokit.request(
+        'GET /repos/{owner}/{repo}/dependency-graph/sbom',
+        { owner, repo },
+      );
+      permissions.sbom = 'granted';
+      const sbom = data.sbom as Record<string, unknown>;
+      const packages = Array.isArray(sbom.packages) ? sbom.packages as Array<Record<string, unknown>> : [];
+      return {
+        spdx_id: String(sbom.spdxVersion ?? ''),
+        name: String(sbom.name ?? ''),
+        created_at: String((sbom.creationInfo as Record<string, unknown>)?.created ?? ''),
+        packages: packages.map(p => {
+          const extRefs = Array.isArray(p.externalRefs) ? p.externalRefs as Array<Record<string, unknown>> : [];
+          const pkgMgr = extRefs.find(r => r.referenceCategory === 'PACKAGE-MANAGER' || r.referenceCategory === 'PACKAGE_MANAGER');
+          return {
+            name: String(p.name ?? ''),
+            version: p.versionInfo ? String(p.versionInfo) : null,
+            ecosystem: pkgMgr ? String(pkgMgr.referenceType ?? '') : String(p.name ?? '').split(':')[0] || 'unknown',
+            license: p.licenseDeclared && p.licenseDeclared !== 'NOASSERTION' ? String(p.licenseDeclared) : null,
+            relationship: String(p.downloadLocation ?? 'NOASSERTION') !== 'NOASSERTION' ? 'direct' : 'indirect',
+          };
+        }),
+      };
+    } catch (e) {
+      this.handleSecurityPermission(e, 'sbom', owner, repo, permissions);
+      return null;
+    }
+  }
+
+  private async fetchCodeScanningAlerts(
+    owner: string, repo: string, limit: number, permissions: Record<string, PermissionStatus>,
+  ): Promise<CodeScanningAlert[]> {
+    try {
+      const { data } = await this.octokit.request(
+        'GET /repos/{owner}/{repo}/code-scanning/alerts',
+        { owner, repo, per_page: Math.min(limit, 100), state: 'open', sort: 'updated', direction: 'desc' },
+      );
+      permissions.codeScanningAlerts = 'granted';
+      return (data as Array<Record<string, unknown>>).slice(0, limit).map(a => {
+        const rule = a.rule as Record<string, unknown> | undefined;
+        const tool = a.tool as Record<string, unknown> | undefined;
+        const instance = a.most_recent_instance as Record<string, unknown> | undefined;
+        const loc = instance?.location as Record<string, unknown> | undefined;
+        return {
+          number: Number(a.number),
+          state: String(a.state ?? ''),
+          severity: String(rule?.severity ?? rule?.security_severity_level ?? 'unknown'),
+          description: String(rule?.description ?? ''),
+          rule_id: String(rule?.id ?? ''),
+          rule_description: String(rule?.description ?? ''),
+          tool_name: String(tool?.name ?? ''),
+          created_at: String(a.created_at ?? ''),
+          updated_at: String(a.updated_at ?? ''),
+          fixed_at: a.fixed_at ? String(a.fixed_at) : null,
+          dismissed_at: a.dismissed_at ? String(a.dismissed_at) : null,
+          html_url: String(a.html_url ?? ''),
+          most_recent_instance: instance ? {
+            ref: String(instance.ref ?? ''),
+            path: String(loc?.path ?? ''),
+            start_line: Number(loc?.start_line ?? 0),
+          } : null,
+        };
+      });
+    } catch (e) {
+      this.handleSecurityPermission(e, 'codeScanningAlerts', owner, repo, permissions);
+      return [];
+    }
+  }
+
+  private async fetchSecretScanningAlerts(
+    owner: string, repo: string, limit: number, permissions: Record<string, PermissionStatus>,
+  ): Promise<SecretScanningAlert[]> {
+    try {
+      const { data } = await this.octokit.request(
+        'GET /repos/{owner}/{repo}/secret-scanning/alerts',
+        { owner, repo, per_page: Math.min(limit, 100), state: 'open', sort: 'updated', direction: 'desc' },
+      );
+      permissions.secretScanningAlerts = 'granted';
+      return (data as Array<Record<string, unknown>>).slice(0, limit).map(a => ({
+        number: Number(a.number),
+        state: String(a.state ?? ''),
+        secret_type: String(a.secret_type ?? ''),
+        secret_type_display_name: String(a.secret_type_display_name ?? ''),
+        resolution: a.resolution ? String(a.resolution) : null,
+        resolved_at: a.resolved_at ? String(a.resolved_at) : null,
+        created_at: String(a.created_at ?? ''),
+        updated_at: String(a.updated_at ?? ''),
+        html_url: String(a.html_url ?? ''),
+        push_protection_bypassed: Boolean(a.push_protection_bypassed),
+      }));
+    } catch (e) {
+      this.handleSecurityPermission(e, 'secretScanningAlerts', owner, repo, permissions);
+      return [];
+    }
+  }
+
+  private handleSecurityPermission(
+    error: unknown, section: string, owner: string, repo: string, permissions: Record<string, PermissionStatus>,
+  ): void {
+    const status = (error as Record<string, unknown>)?.status as number | undefined;
+    if (status === 403) {
+      permissions[section] = 'denied';
+      log.warn(`${section} access denied for ${owner}/${repo} (requires security_events scope or admin access)`);
+    } else if (status === 404) {
+      permissions[section] = 'not_enabled';
+      log.info(`${section} not enabled for ${owner}/${repo}`);
+    } else {
+      permissions[section] = 'denied';
+      log.warn(`${section} failed for ${owner}/${repo}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   // ─── Mapping Helpers ────────────────────────────────────────────────────────

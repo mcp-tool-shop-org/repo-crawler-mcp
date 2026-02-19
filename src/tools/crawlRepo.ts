@@ -8,11 +8,12 @@ import type { CrawlResult } from '../types.js';
 export function registerCrawlRepoTool(server: McpServer, adapter: PlatformAdapter): void {
   server.tool(
     'crawl_repo',
-    'Crawl a GitHub repository and return structured data. Tier 1: metadata, file tree, languages, README, commits, contributors, branches, tags, releases, community, workflows. Tier 2: adds issues, PRs, traffic, milestones, discussions.',
+    'Crawl a GitHub repository and return structured data. Tier 1: metadata, file tree, languages, README, commits, contributors, branches, tags, releases, community, workflows. Tier 2: adds issues, PRs, traffic, milestones, discussions. Tier 3: adds Dependabot alerts, security advisories, SBOM, code scanning, secret scanning.',
     {
       owner: z.string().min(1).describe('GitHub repository owner (user or org)'),
       repo: z.string().min(1).describe('GitHub repository name'),
-      tier: z.enum(['1', '2', '3']).default('1').describe('Data tier: 1=default, 2=advanced (issues/PRs/traffic), 3=security (future)'),
+      tier: z.enum(['1', '2', '3']).default('1').describe('Data tier: 1=default, 2=advanced (issues/PRs/traffic), 3=security (Dependabot/SBOM/code scanning)'),
+      alert_limit: z.number().min(1).max(500).default(100).describe('Max security alerts to fetch (Tier 3)'),
       sections: z.array(z.string()).optional().describe(
         'Specific sections to include (e.g. ["metadata","tree","issues","pullRequests"]). Omit for all sections in the tier.'
       ),
@@ -52,6 +53,15 @@ export function registerCrawlRepoTool(server: McpServer, adapter: PlatformAdapte
             issueLimit: args.issue_limit,
             prLimit: args.pr_limit,
             issueState: args.issue_state,
+          });
+        }
+
+        // Tier 3: fetch security data
+        if (args.tier === '3') {
+          result.tier3Data = await adapter.fetchTier3(args.owner, args.repo, {
+            sections: args.sections,
+            excludeSections: args.exclude_sections,
+            alertLimit: args.alert_limit,
           });
         }
 

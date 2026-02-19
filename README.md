@@ -1,13 +1,23 @@
-# Repo Crawler MCP
+<p align="center">
+  <img src="logo.png" alt="mcp-tool-shop" width="200" />
+</p>
 
-An MCP server that crawls GitHub repositories and extracts structured data for AI agents. Exposes tools via the [Model Context Protocol](https://modelcontextprotocol.io/) for use with Claude Code, Claude Desktop, and other MCP clients.
+<h1 align="center">Repo Crawler MCP</h1>
+
+<p align="center">
+  An MCP server that crawls GitHub repositories and extracts structured data for AI agents.<br>
+  Exposes tools via the <a href="https://modelcontextprotocol.io/">Model Context Protocol</a> for use with Claude Code, Claude Desktop, and other MCP clients.
+</p>
+
+---
 
 ## Features
 
 - **5 MCP tools**: `crawl_repo`, `crawl_org`, `get_repo_summary`, `compare_repos`, `export_data`
-- **Tiered data collection**: Tier 1 (default metadata), Tier 2 (issues/PRs — coming soon), Tier 3 (security — coming soon)
+- **3-tier data collection**: metadata, issues/PRs/traffic, security/SBOM/code scanning
 - **Section-selective fetching**: Only calls the GitHub APIs you need, saving quota
 - **Built-in rate limiting**: Octokit throttling plugin with automatic retry
+- **Graceful degradation**: One 403 never kills the whole crawl — permissions tracked per-section
 - **Safe exports**: CSV with formula injection prevention, Markdown with pipe escaping
 - **Adapter pattern**: GitHub first, extensible to GitLab/Bitbucket
 
@@ -35,19 +45,19 @@ Add to your MCP config:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GITHUB_TOKEN` | Recommended | GitHub PAT. Without it: 60 req/hr. With it: 5,000 req/hr. |
+| `GITHUB_TOKEN` | Recommended | GitHub PAT. Without it: 60 req/hr. With it: 5,000 req/hr. Tier 3 security endpoints require `security_events` scope. |
 
 ## Tools
 
 ### `crawl_repo`
-Crawl a single repository. Returns structured data including metadata, file tree, languages, README, commits, contributors, branches, tags, releases, community health, and CI workflows.
+Crawl a single repository at a specified data tier.
 
-**Params**: `owner`, `repo`, `tier`, `sections`, `exclude_sections`, `commit_limit`, `contributor_limit`
+**Params**: `owner`, `repo`, `tier` (1/2/3), `sections`, `exclude_sections`, `commit_limit`, `contributor_limit`, `issue_limit`, `pr_limit`, `issue_state`, `alert_limit`
 
 ### `crawl_org`
 Crawl all repositories in a GitHub organization with filters.
 
-**Params**: `org`, `tier`, `min_stars`, `language`, `include_forks`, `include_archived`, `repo_limit`
+**Params**: `org`, `tier`, `min_stars`, `language`, `include_forks`, `include_archived`, `repo_limit`, `alert_limit`
 
 ### `get_repo_summary`
 Quick human-readable summary of a repo. Fast and cheap on API quota (4 calls).
@@ -64,7 +74,9 @@ Export previously crawled data as JSON, CSV, or Markdown.
 
 **Params**: `data`, `format`, `sections`
 
-## Tier 1 Sections (Default)
+## Data Tiers
+
+### Tier 1 — Default
 
 | Section | GitHub API | Calls |
 |---------|-----------|-------|
@@ -80,7 +92,31 @@ Export previously crawled data as JSON, CSV, or Markdown.
 | `community` | `GET /repos/.../community/profile` | 1 |
 | `workflows` | `GET /repos/.../actions/workflows` | 1 |
 
-**Total: ~11 API calls per full Tier 1 crawl.**
+**~11 API calls per full Tier 1 crawl.**
+
+### Tier 2 — Advanced (includes Tier 1)
+
+| Section | GitHub API | Calls | Notes |
+|---------|-----------|-------|-------|
+| `traffic` | `GET /repos/.../traffic/views` + `/clones` | 2 | Requires push/admin access |
+| `issues` | `GET /repos/.../issues` | 1+ (paginated) | Filters out PRs, body capped at 500 chars |
+| `pullRequests` | `GET /repos/.../pulls` | 1+ (paginated) | Includes draft/merged status |
+| `milestones` | `GET /repos/.../milestones` | 1+ | All states |
+| `discussions` | _(GraphQL — not yet implemented)_ | 0 | Returns empty |
+
+### Tier 3 — Security (includes Tier 1 + 2)
+
+| Section | GitHub API | Calls | Notes |
+|---------|-----------|-------|-------|
+| `dependabotAlerts` | `GET /repos/.../dependabot/alerts` | 1 | Requires `security_events` scope |
+| `securityAdvisories` | `GET /repos/.../security-advisories` | 1 | Repo-level advisories |
+| `sbom` | `GET /repos/.../dependency-graph/sbom` | 1 | SPDX format, packages + licenses |
+| `codeScanningAlerts` | `GET /repos/.../code-scanning/alerts` | 1 | CodeQL, Semgrep, etc. |
+| `secretScanningAlerts` | `GET /repos/.../secret-scanning/alerts` | 1 | Leaked tokens/keys |
+
+**Permission tracking**: Each Tier 3 section returns `granted`, `denied`, or `not_enabled` so you know exactly what's accessible.
+
+**Graceful degradation**: A 403 on Dependabot doesn't block the rest — each section is fetched independently.
 
 ## Development
 

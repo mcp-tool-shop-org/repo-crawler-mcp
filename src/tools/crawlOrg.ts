@@ -13,7 +13,8 @@ export function registerCrawlOrgTool(server: McpServer, adapter: PlatformAdapter
     'Crawl all repositories in a GitHub organization. Lists repos with filters, then crawls each at the specified tier. Returns an array of crawl results.',
     {
       org: z.string().min(1).describe('GitHub organization name'),
-      tier: z.enum(['1', '2', '3']).default('1').describe('Data tier per repo: 1=default, 2=advanced (issues/PRs/traffic)'),
+      tier: z.enum(['1', '2', '3']).default('1').describe('Data tier per repo: 1=default, 2=advanced (issues/PRs/traffic), 3=security'),
+      alert_limit: z.number().min(1).max(200).default(30).describe('Max security alerts per repo (Tier 3)'),
       min_stars: z.number().min(0).default(0).describe('Minimum stars filter'),
       language: z.string().optional().describe('Filter by primary language'),
       include_forks: z.boolean().default(false).describe('Include forked repos'),
@@ -66,6 +67,13 @@ export function registerCrawlOrgTool(server: McpServer, adapter: PlatformAdapter
                 issueLimit: args.issue_limit,
                 prLimit: args.pr_limit,
                 issueState: args.issue_state,
+              });
+            }
+
+            // Tier 3: fetch security data per repo
+            if (args.tier === '3') {
+              crawlResult.tier3Data = await adapter.fetchTier3(args.org, repo.name, {
+                alertLimit: args.alert_limit,
               });
             }
 
