@@ -161,6 +161,107 @@ export const TIER1_SECTIONS = [
 
 export type Tier1Section = (typeof TIER1_SECTIONS)[number];
 
+// ─── Tier 2 Data Interfaces (Advanced) ────────────────────────────────────────
+
+export interface TrafficViews {
+  count: number;
+  uniques: number;
+  views: Array<{ timestamp: string; count: number; uniques: number }>;
+}
+
+export interface TrafficClones {
+  count: number;
+  uniques: number;
+  clones: Array<{ timestamp: string; count: number; uniques: number }>;
+}
+
+export interface TrafficData {
+  views: TrafficViews | null;
+  clones: TrafficClones | null;
+}
+
+export interface IssueDetail {
+  number: number;
+  title: string;
+  state: string;
+  labels: string[];
+  assignees: string[];
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  author: string;
+  comments: number;
+  body_preview: string;
+  html_url: string;
+  milestone: string | null;
+  reactions_total: number;
+}
+
+export interface PullRequestDetail {
+  number: number;
+  title: string;
+  state: string;
+  labels: string[];
+  assignees: string[];
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  merged_at: string | null;
+  author: string;
+  draft: boolean;
+  comments: number;
+  body_preview: string;
+  html_url: string;
+  head_ref: string;
+  base_ref: string;
+  additions: number | null;
+  deletions: number | null;
+  changed_files: number | null;
+}
+
+export interface MilestoneInfo {
+  number: number;
+  title: string;
+  state: string;
+  description: string | null;
+  open_issues: number;
+  closed_issues: number;
+  due_on: string | null;
+  created_at: string;
+  updated_at: string;
+  html_url: string;
+}
+
+export interface DiscussionInfo {
+  number: number;
+  title: string;
+  author: string;
+  category: string;
+  created_at: string;
+  updated_at: string;
+  comments: number;
+  answer_chosen: boolean;
+  html_url: string;
+}
+
+export interface Tier2Data {
+  traffic: TrafficData | null;
+  issues: IssueDetail[];
+  pullRequests: PullRequestDetail[];
+  milestones: MilestoneInfo[];
+  discussions: DiscussionInfo[];
+}
+
+export const TIER2_SECTIONS = [
+  'traffic',
+  'issues',
+  'pullRequests',
+  'milestones',
+  'discussions',
+] as const;
+
+export type Tier2Section = (typeof TIER2_SECTIONS)[number];
+
 // ─── Crawl Result Wrapper ─────────────────────────────────────────────────────
 
 export interface CrawlResult {
@@ -170,6 +271,7 @@ export interface CrawlResult {
   tier: string;
   sections: string[];
   data: Tier1Data;
+  tier2Data?: Tier2Data;
 }
 
 // ─── Zod Input Schemas ────────────────────────────────────────────────────────
@@ -179,13 +281,16 @@ export const CrawlRepoInputSchema = z.object({
   repo: z.string().min(1).describe('GitHub repository name'),
   tier: z.enum(['1', '2', '3']).default('1').describe('Data tier: 1=default, 2=advanced, 3=security'),
   sections: z.array(z.string()).optional().describe(
-    'Specific sections to include (e.g. ["metadata","tree","readme"]). If omitted, all sections for the tier are included.'
+    'Specific sections to include (e.g. ["metadata","tree","readme","issues","pullRequests"]). If omitted, all sections for the tier are included.'
   ),
   exclude_sections: z.array(z.string()).optional().describe(
     'Sections to exclude from the tier'
   ),
   commit_limit: z.number().min(1).max(500).default(30).describe('Max commits to fetch'),
   contributor_limit: z.number().min(1).max(500).default(30).describe('Max contributors to fetch'),
+  issue_limit: z.number().min(1).max(1000).default(100).describe('Max issues to fetch (Tier 2)'),
+  pr_limit: z.number().min(1).max(1000).default(100).describe('Max pull requests to fetch (Tier 2)'),
+  issue_state: z.enum(['open', 'closed', 'all']).default('all').describe('Issue/PR state filter (Tier 2)'),
 });
 
 export type CrawlRepoInput = z.infer<typeof CrawlRepoInputSchema>;

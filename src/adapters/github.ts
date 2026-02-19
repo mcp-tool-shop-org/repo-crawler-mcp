@@ -1,9 +1,10 @@
 import { Octokit } from '@octokit/rest';
 import { throttling } from '@octokit/plugin-throttling';
 import { log } from '../utils/logger.js';
-import { TIER1_SECTIONS } from '../types.js';
+import { TIER1_SECTIONS, TIER2_SECTIONS } from '../types.js';
 import type {
   Tier1Data,
+  Tier2Data,
   RepoMetadata,
   FileTreeEntry,
   ReadmeContent,
@@ -16,8 +17,14 @@ import type {
   WorkflowInfo,
   RateLimitInfo,
   Tier1Section,
+  Tier2Section,
+  TrafficData,
+  IssueDetail,
+  PullRequestDetail,
+  MilestoneInfo,
+  DiscussionInfo,
 } from '../types.js';
-import type { PlatformAdapter, FetchOptions, OrgListOptions } from './types.js';
+import type { PlatformAdapter, FetchOptions, Tier2FetchOptions, OrgListOptions } from './types.js';
 
 const ThrottledOctokit = Octokit.plugin(throttling);
 
@@ -48,6 +55,21 @@ function resolveSections(options?: FetchOptions): Set<Tier1Section> {
   if (options?.excludeSections) {
     for (const s of options.excludeSections) {
       sections.delete(s as Tier1Section);
+    }
+  }
+  return sections;
+}
+
+function resolveTier2Sections(options?: Tier2FetchOptions): Set<Tier2Section> {
+  let sections: Set<Tier2Section>;
+  if (options?.sections && options.sections.length > 0) {
+    sections = new Set(options.sections.filter(s => (TIER2_SECTIONS as readonly string[]).includes(s)) as Tier2Section[]);
+  } else {
+    sections = new Set([...TIER2_SECTIONS]);
+  }
+  if (options?.excludeSections) {
+    for (const s of options.excludeSections) {
+      sections.delete(s as Tier2Section);
     }
   }
   return sections;
@@ -360,6 +382,173 @@ export class GitHubAdapter implements PlatformAdapter {
     } catch {
       return [];
     }
+  }
+
+  // ─── Tier 2 Fetch Methods ─────────────────────────────────────────────────
+
+  async fetchTier2(owner: string, repo: string, options?: Tier2FetchOptions): Promise<Tier2Data> {
+    const sections = resolveTier2Sections(options);
+
+    // Traffic requires admin/push access — attempt and gracefully degrade
+    const traffic = sections.has('traffic')
+      ? await this.fetchTraffic(owner, repo)
+      : null;
+
+    // Issues and PRs are heavy — paginate with limits
+    const issues = sections.has('issues')
+      ? await this.fetchIssues(owner, repo, options?.issueLimit ?? 100, options?.issueState ?? 'all')
+      : [];
+    const pullRequests = sections.has('pullRequests')
+      ? await this.fetchPullRequests(owner, repo, options?.prLimit ?? 100, options?.issueState ?? 'all')
+      : [];
+    const milestones = sections.has('milestones')
+      ? await this.fetchMilestones(owner, repo)
+      : [];
+    const discussions = sections.has('discussions')
+      ? await this.fetchDiscussions(owner, repo)
+      : [];
+
+    return { traffic, issues, pullRequests, milestones, discussions };
+  }
+
+  private async fetchTraffic(owner: string, repo: string): Promise<TrafficData | null> {
+    try {
+      const [viewsR, clonesR] = await Promise.allSettled([
+        this.octokit.rest.repos.getViews({ owner, repo, per: 'day' }),
+        this.octokit.rest.repos.getClones({ owner, repo, per: 'day' }),
+      ]);
+
+      return {
+        views: viewsR.status === 'fulfilled' ? {
+          count: viewsR.value.data.count,
+          uniques: viewsR.value.data.uniques,
+          views: viewsR.value.data.views.map(v => ({
+            timestamp: v.timestamp,
+            count: v.count,
+            uniques: v.uniques,
+          })),
+        } : null,
+        clones: clonesR.status === 'fulfilled' ? {
+          count: clonesR.value.data.count,
+          uniques: clonesR.value.data.uniques,
+          clones: clonesR.value.data.clones.map(c => ({
+            timestamp: c.timestamp,
+            count: c.count,
+            uniques: c.uniques,
+          })),
+        } : null,
+      };
+    } catch {
+      log.warn(`Traffic data unavailable for ${owner}/${repo} (requires push/admin access)`);
+      return null;
+    }
+  }
+
+  private async fetchIssues(owner: string, repo: string, limit: number, state: 'open' | 'closed' | 'all'): Promise<IssueDetail[]> {
+    const results: IssueDetail[] = [];
+    try {
+      for await (const response of this.octokit.paginate.iterator(
+        this.octokit.rest.issues.listForRepo,
+        { owner, repo, state, per_page: Math.min(limit, 100), sort: 'updated', direction: 'desc' },
+      )) {
+        for (const issue of response.data) {
+          // The issues endpoint also returns PRs — filter them out
+          if (issue.pull_request) continue;
+
+          results.push({
+            number: issue.number,
+            title: issue.title,
+            state: issue.state,
+            labels: issue.labels.map(l => typeof l === 'string' ? l : l.name ?? ''),
+            assignees: (issue.assignees ?? []).map(a => a.login),
+            created_at: issue.created_at,
+            updated_at: issue.updated_at,
+            closed_at: issue.closed_at,
+            author: issue.user?.login ?? 'unknown',
+            comments: issue.comments,
+            body_preview: issue.body ? issue.body.slice(0, 500) : '',
+            html_url: issue.html_url,
+            milestone: issue.milestone?.title ?? null,
+            reactions_total: (issue.reactions as Record<string, unknown>)?.total_count as number ?? 0,
+          });
+          if (results.length >= limit) break;
+        }
+        if (results.length >= limit) break;
+      }
+    } catch {
+      log.warn(`Failed to fetch issues for ${owner}/${repo}`);
+    }
+    return results;
+  }
+
+  private async fetchPullRequests(owner: string, repo: string, limit: number, state: 'open' | 'closed' | 'all'): Promise<PullRequestDetail[]> {
+    const results: PullRequestDetail[] = [];
+    try {
+      for await (const response of this.octokit.paginate.iterator(
+        this.octokit.rest.pulls.list,
+        { owner, repo, state, per_page: Math.min(limit, 100), sort: 'updated', direction: 'desc' },
+      )) {
+        for (const pr of response.data) {
+          results.push({
+            number: pr.number,
+            title: pr.title,
+            state: pr.state,
+            labels: pr.labels.map(l => l.name ?? ''),
+            assignees: (pr.assignees ?? []).map(a => a.login),
+            created_at: pr.created_at,
+            updated_at: pr.updated_at,
+            closed_at: pr.closed_at,
+            merged_at: pr.merged_at,
+            author: pr.user?.login ?? 'unknown',
+            draft: pr.draft ?? false,
+            comments: (pr as Record<string, unknown>).comments as number ?? 0,
+            body_preview: pr.body ? pr.body.slice(0, 500) : '',
+            html_url: pr.html_url,
+            head_ref: pr.head.ref,
+            base_ref: pr.base.ref,
+            additions: (pr as Record<string, unknown>).additions as number ?? null,
+            deletions: (pr as Record<string, unknown>).deletions as number ?? null,
+            changed_files: (pr as Record<string, unknown>).changed_files as number ?? null,
+          });
+          if (results.length >= limit) break;
+        }
+        if (results.length >= limit) break;
+      }
+    } catch {
+      log.warn(`Failed to fetch pull requests for ${owner}/${repo}`);
+    }
+    return results;
+  }
+
+  private async fetchMilestones(owner: string, repo: string): Promise<MilestoneInfo[]> {
+    try {
+      const data = await this.octokit.paginate(
+        this.octokit.rest.issues.listMilestones,
+        { owner, repo, state: 'all', per_page: 100 },
+      );
+      return data.map(m => ({
+        number: m.number,
+        title: m.title,
+        state: m.state,
+        description: m.description,
+        open_issues: m.open_issues,
+        closed_issues: m.closed_issues,
+        due_on: m.due_on,
+        created_at: m.created_at,
+        updated_at: m.updated_at,
+        html_url: m.html_url,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  private async fetchDiscussions(_owner: string, _repo: string): Promise<DiscussionInfo[]> {
+    // GitHub REST API has limited Discussions support.
+    // Full discussion data requires GraphQL API.
+    // For now, return empty with a log note. Will implement with @octokit/graphql in a future update.
+    log.info('Discussions require GraphQL API — not yet implemented, returning empty');
+    return [];
   }
 
   // ─── Mapping Helpers ────────────────────────────────────────────────────────

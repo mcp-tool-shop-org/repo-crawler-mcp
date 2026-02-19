@@ -97,6 +97,40 @@ function exportCSV(data: Record<string, unknown>, sections?: string[]): string {
     parts.push('');
   }
 
+  // Tier 2: Issues
+  const t2 = data.tier2Data as Record<string, unknown> | undefined;
+  if (t2) {
+    if (shouldInclude('issues', sections) && Array.isArray(t2.issues) && t2.issues.length > 0) {
+      parts.push('# Issues');
+      parts.push(csvRow(['number', 'title', 'state', 'author', 'labels', 'created_at', 'comments', 'reactions']));
+      for (const i of t2.issues as Array<Record<string, unknown>>) {
+        const labels = Array.isArray(i.labels) ? (i.labels as string[]).join(';') : '';
+        parts.push(csvRow([i.number, i.title, i.state, i.author, labels, i.created_at, i.comments, i.reactions_total]));
+      }
+      parts.push('');
+    }
+
+    // Tier 2: Pull Requests
+    if (shouldInclude('pullRequests', sections) && Array.isArray(t2.pullRequests) && t2.pullRequests.length > 0) {
+      parts.push('# Pull Requests');
+      parts.push(csvRow(['number', 'title', 'state', 'author', 'draft', 'created_at', 'merged_at', 'additions', 'deletions']));
+      for (const pr of t2.pullRequests as Array<Record<string, unknown>>) {
+        parts.push(csvRow([pr.number, pr.title, pr.state, pr.author, pr.draft, pr.created_at, pr.merged_at ?? '', pr.additions ?? '', pr.deletions ?? '']));
+      }
+      parts.push('');
+    }
+
+    // Tier 2: Milestones
+    if (shouldInclude('milestones', sections) && Array.isArray(t2.milestones) && t2.milestones.length > 0) {
+      parts.push('# Milestones');
+      parts.push(csvRow(['number', 'title', 'state', 'open_issues', 'closed_issues', 'due_on']));
+      for (const m of t2.milestones as Array<Record<string, unknown>>) {
+        parts.push(csvRow([m.number, m.title, m.state, m.open_issues, m.closed_issues, m.due_on ?? '']));
+      }
+      parts.push('');
+    }
+  }
+
   if (parts.length === 0) {
     return '# No data to export';
   }
@@ -178,6 +212,45 @@ function exportMarkdown(data: Record<string, unknown>, sections?: string[]): str
       lines.push(mdTableRow([r.tag_name, r.name ?? '-', r.published_at ?? '-', r.prerelease ? 'Yes' : 'No']));
     }
     lines.push('');
+  }
+
+  // Tier 2: Issues
+  const t2md = data.tier2Data as Record<string, unknown> | undefined;
+  if (t2md) {
+    if (shouldInclude('issues', sections) && Array.isArray(t2md.issues) && t2md.issues.length > 0) {
+      lines.push('## Issues');
+      lines.push(mdTableRow(['#', 'Title', 'State', 'Author', 'Labels', 'Comments', 'Reactions']));
+      lines.push(mdTableSeparator(7));
+      for (const i of t2md.issues as Array<Record<string, unknown>>) {
+        const labels = Array.isArray(i.labels) ? (i.labels as string[]).join(', ') : '';
+        lines.push(mdTableRow([i.number, String(i.title ?? '').slice(0, 60), i.state, i.author, labels, i.comments, i.reactions_total]));
+      }
+      lines.push('');
+    }
+
+    // Tier 2: Pull Requests
+    if (shouldInclude('pullRequests', sections) && Array.isArray(t2md.pullRequests) && t2md.pullRequests.length > 0) {
+      lines.push('## Pull Requests');
+      lines.push(mdTableRow(['#', 'Title', 'State', 'Author', 'Draft', 'Merged', '+/-']));
+      lines.push(mdTableSeparator(7));
+      for (const pr of t2md.pullRequests as Array<Record<string, unknown>>) {
+        const merged = pr.merged_at ? String(pr.merged_at).slice(0, 10) : '-';
+        const diff = (pr.additions != null && pr.deletions != null) ? `+${pr.additions}/-${pr.deletions}` : '-';
+        lines.push(mdTableRow([pr.number, String(pr.title ?? '').slice(0, 60), pr.state, pr.author, pr.draft ? 'Yes' : 'No', merged, diff]));
+      }
+      lines.push('');
+    }
+
+    // Tier 2: Milestones
+    if (shouldInclude('milestones', sections) && Array.isArray(t2md.milestones) && t2md.milestones.length > 0) {
+      lines.push('## Milestones');
+      lines.push(mdTableRow(['#', 'Title', 'State', 'Open', 'Closed', 'Due']));
+      lines.push(mdTableSeparator(6));
+      for (const m of t2md.milestones as Array<Record<string, unknown>>) {
+        lines.push(mdTableRow([m.number, m.title, m.state, m.open_issues, m.closed_issues, m.due_on ?? '-']));
+      }
+      lines.push('');
+    }
   }
 
   if (lines.length <= 2) {

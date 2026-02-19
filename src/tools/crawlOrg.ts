@@ -13,7 +13,7 @@ export function registerCrawlOrgTool(server: McpServer, adapter: PlatformAdapter
     'Crawl all repositories in a GitHub organization. Lists repos with filters, then crawls each at the specified tier. Returns an array of crawl results.',
     {
       org: z.string().min(1).describe('GitHub organization name'),
-      tier: z.enum(['1', '2', '3']).default('1').describe('Data tier per repo'),
+      tier: z.enum(['1', '2', '3']).default('1').describe('Data tier per repo: 1=default, 2=advanced (issues/PRs/traffic)'),
       min_stars: z.number().min(0).default(0).describe('Minimum stars filter'),
       language: z.string().optional().describe('Filter by primary language'),
       include_forks: z.boolean().default(false).describe('Include forked repos'),
@@ -21,6 +21,9 @@ export function registerCrawlOrgTool(server: McpServer, adapter: PlatformAdapter
       repo_limit: z.number().min(1).max(100).default(30).describe('Max repos to crawl'),
       commit_limit: z.number().min(1).max(100).default(10).describe('Max commits per repo'),
       contributor_limit: z.number().min(1).max(100).default(10).describe('Max contributors per repo'),
+      issue_limit: z.number().min(1).max(500).default(50).describe('Max issues per repo (Tier 2)'),
+      pr_limit: z.number().min(1).max(500).default(50).describe('Max PRs per repo (Tier 2)'),
+      issue_state: z.enum(['open', 'closed', 'all']).default('all').describe('Issue/PR state filter (Tier 2)'),
     },
     async (args) => {
       try {
@@ -38,7 +41,7 @@ export function registerCrawlOrgTool(server: McpServer, adapter: PlatformAdapter
           return errorResponse(ErrorCode.ORG_NOT_FOUND, `No repos found for org "${args.org}" with the given filters`);
         }
 
-        log.info(`Crawling ${repos.length} repos in ${args.org}...`);
+        log.info(`Crawling ${repos.length} repos in ${args.org} (tier ${args.tier})...`);
 
         const results: CrawlResult[] = [];
         for (const repo of repos) {
@@ -48,15 +51,25 @@ export function registerCrawlOrgTool(server: McpServer, adapter: PlatformAdapter
               contributorLimit: args.contributor_limit,
             });
 
-            results.push({
+            const crawlResult: CrawlResult = {
               owner: args.org,
               repo: repo.name,
               crawledAt: new Date().toISOString(),
               tier: args.tier,
               sections: ['all'],
               data,
-            });
+            };
 
+            // Tier 2+: fetch advanced data per repo
+            if (args.tier === '2' || args.tier === '3') {
+              crawlResult.tier2Data = await adapter.fetchTier2(args.org, repo.name, {
+                issueLimit: args.issue_limit,
+                prLimit: args.pr_limit,
+                issueState: args.issue_state,
+              });
+            }
+
+            results.push(crawlResult);
             log.info(`  Crawled ${repo.name} (${results.length}/${repos.length})`);
           } catch (error) {
             log.warn(`  Failed to crawl ${repo.name}: ${error instanceof Error ? error.message : String(error)}`);
