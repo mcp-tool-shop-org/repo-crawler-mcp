@@ -1,31 +1,48 @@
 <p align="center">
+  <strong>English</strong> | <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.hi.md">हिन्दी</a> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português</a>
+</p>
+
+<p align="center">
   <img src="logo.png" alt="mcp-tool-shop" width="200" />
 </p>
 
 <h1 align="center">Repo Crawler MCP</h1>
 
 <p align="center">
-  An MCP server that crawls GitHub repositories and extracts structured data for AI agents.<br>
-  Exposes tools via the <a href="https://modelcontextprotocol.io/">Model Context Protocol</a> for use with Claude Code, Claude Desktop, and other MCP clients.
+  An MCP server that turns GitHub repositories into structured intelligence for AI agents.<br>
+  Metadata, issues, security alerts, SBOMs — all through one tool call.
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &middot;
+  <a href="#tools">Tools</a> &middot;
+  <a href="#data-tiers">Data Tiers</a> &middot;
+  <a href="#configuration">Configuration</a> &middot;
+  <a href="#architecture">Architecture</a> &middot;
+  <a href="#license">License</a>
 </p>
 
 ---
 
+## Why
+
+AI agents that work with code need to understand repositories — not just files, but the full picture: who contributes, what's broken, which dependencies are vulnerable, how active the project is. Scraping this by hand burns API quota and context window.
+
+**Repo Crawler MCP** exposes GitHub's entire data surface as structured MCP tools. One call to `crawl_repo` with `tier: '3'` returns metadata, file tree, languages, README, commits, contributors, branches, tags, releases, community health, CI workflows, issues, PRs, traffic, milestones, Dependabot alerts, security advisories, SBOM, code scanning alerts, and secret scanning alerts — all section-selective, all rate-limited, all with graceful degradation.
+
 ## Features
 
-- **5 MCP tools**: `crawl_repo`, `crawl_org`, `get_repo_summary`, `compare_repos`, `export_data`
-- **3-tier data collection**: metadata, issues/PRs/traffic, security/SBOM/code scanning
-- **Section-selective fetching**: Only calls the GitHub APIs you need, saving quota
-- **Built-in rate limiting**: Octokit throttling plugin with automatic retry
-- **Graceful degradation**: One 403 never kills the whole crawl — permissions tracked per-section
-- **Safe exports**: CSV with formula injection prevention, Markdown with pipe escaping
-- **Adapter pattern**: GitHub first, extensible to GitLab/Bitbucket
+- **5 MCP tools** — crawl repos, crawl orgs, summarize, compare, export
+- **3-tier data model** — start light, go deep when you need to
+- **Section-selective fetching** — only calls the APIs you ask for, saving quota
+- **Graceful degradation** — a 403 on Dependabot doesn't kill the crawl; permissions tracked per-section
+- **Built-in rate limiting** — Octokit throttling with automatic retry on 429s
+- **Safe exports** — CSV with formula injection prevention, Markdown with pipe escaping
+- **Adapter pattern** — GitHub first, extensible to GitLab/Bitbucket
 
 ## Quick Start
 
 ### With Claude Code
-
-Add to your MCP config:
 
 ```json
 {
@@ -41,116 +58,225 @@ Add to your MCP config:
 }
 ```
 
-### Environment Variables
+### With Claude Desktop
+
+Add the same config to your `claude_desktop_config.json`.
+
+### Configuration
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GITHUB_TOKEN` | Recommended | GitHub PAT. Without it: 60 req/hr. With it: 5,000 req/hr. Tier 3 security endpoints require `security_events` scope. |
+| `GITHUB_TOKEN` | Recommended | GitHub Personal Access Token. Without it: 60 req/hr. With it: 5,000 req/hr. |
+
+**Token scopes by tier:**
+
+| Tier | Required Scopes |
+|------|----------------|
+| Tier 1 | `public_repo` (or `repo` for private repos) |
+| Tier 2 | Same + push/admin access for traffic data |
+| Tier 3 | Same + `security_events` for Dependabot, code scanning, secret scanning |
 
 ## Tools
 
 ### `crawl_repo`
-Crawl a single repository at a specified data tier.
 
-**Params**: `owner`, `repo`, `tier` (1/2/3), `sections`, `exclude_sections`, `commit_limit`, `contributor_limit`, `issue_limit`, `pr_limit`, `issue_state`, `alert_limit`
+The main tool. Crawl a single repository at any data tier.
+
+```
+crawl_repo({ owner: "facebook", repo: "react", tier: "2" })
+```
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `owner` | string | — | Repository owner |
+| `repo` | string | — | Repository name |
+| `tier` | `'1'` \| `'2'` \| `'3'` | `'1'` | Data tier |
+| `sections` | string[] | all | Specific sections to include |
+| `exclude_sections` | string[] | none | Sections to skip |
+| `commit_limit` | number | 30 | Max commits (Tier 1) |
+| `contributor_limit` | number | 30 | Max contributors (Tier 1) |
+| `issue_limit` | number | 100 | Max issues (Tier 2) |
+| `pr_limit` | number | 100 | Max PRs (Tier 2) |
+| `issue_state` | `'open'` \| `'closed'` \| `'all'` | `'all'` | Issue/PR filter (Tier 2) |
+| `alert_limit` | number | 100 | Max security alerts (Tier 3) |
 
 ### `crawl_org`
-Crawl all repositories in a GitHub organization with filters.
 
-**Params**: `org`, `tier`, `min_stars`, `language`, `include_forks`, `include_archived`, `repo_limit`, `alert_limit`
+Crawl every repo in an organization with filters.
+
+```
+crawl_org({ org: "vercel", tier: "1", min_stars: 100, language: "TypeScript" })
+```
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `org` | string | — | Organization name |
+| `tier` | `'1'` \| `'2'` \| `'3'` | `'1'` | Data tier per repo |
+| `min_stars` | number | 0 | Minimum star count |
+| `language` | string | any | Filter by primary language |
+| `include_forks` | boolean | false | Include forked repos |
+| `include_archived` | boolean | false | Include archived repos |
+| `repo_limit` | number | 30 | Max repos to crawl |
+| `alert_limit` | number | 30 | Max security alerts per repo (Tier 3) |
 
 ### `get_repo_summary`
-Quick human-readable summary of a repo. Fast and cheap on API quota (4 calls).
 
-**Params**: `owner`, `repo`
+Quick human-readable summary. Only 4 API calls — ideal for triage.
+
+```
+get_repo_summary({ owner: "anthropics", repo: "claude-code" })
+```
 
 ### `compare_repos`
-Side-by-side comparison of 2-5 repos covering stars, languages, activity, community, and size.
 
-**Params**: `repos[]`, `aspects[]`
+Side-by-side comparison of 2–5 repos. Stars, languages, activity, community health, size.
+
+```
+compare_repos({ repos: [
+  { owner: "vitejs", repo: "vite" },
+  { owner: "webpack", repo: "webpack" }
+]})
+```
 
 ### `export_data`
-Export previously crawled data as JSON, CSV, or Markdown.
 
-**Params**: `data`, `format`, `sections`
+Export crawl results as JSON, CSV, or Markdown. CSV includes formula injection prevention.
+
+```
+export_data({ data: crawlResult, format: "markdown", sections: ["metadata", "issues"] })
+```
 
 ## Data Tiers
 
-### Tier 1 — Default
+### Tier 1 — Repository Fundamentals
 
-| Section | GitHub API | Calls |
-|---------|-----------|-------|
+Everything you need to understand a repo at a glance.
+
+| Section | API Endpoint | Calls |
+|---------|-------------|-------|
 | `metadata` | `GET /repos/{owner}/{repo}` | 1 |
 | `tree` | `GET /repos/.../git/trees/{sha}?recursive=1` | 1 |
 | `languages` | `GET /repos/.../languages` | 1 |
 | `readme` | `GET /repos/.../readme` | 1 |
-| `commits` | `GET /repos/.../commits` | 1+ (paginated) |
-| `contributors` | `GET /repos/.../contributors` | 1+ (paginated) |
+| `commits` | `GET /repos/.../commits` | 1+ |
+| `contributors` | `GET /repos/.../contributors` | 1+ |
 | `branches` | `GET /repos/.../branches` | 1+ |
 | `tags` | `GET /repos/.../tags` | 1+ |
 | `releases` | `GET /repos/.../releases` | 1+ |
 | `community` | `GET /repos/.../community/profile` | 1 |
 | `workflows` | `GET /repos/.../actions/workflows` | 1 |
 
-**~11 API calls per full Tier 1 crawl.**
+**Budget: ~11 API calls per full crawl. ~450 full crawls/hr with token.**
 
-### Tier 2 — Advanced (includes Tier 1)
+### Tier 2 — Project Activity (includes Tier 1)
 
-| Section | GitHub API | Calls | Notes |
-|---------|-----------|-------|-------|
-| `traffic` | `GET /repos/.../traffic/views` + `/clones` | 2 | Requires push/admin access |
-| `issues` | `GET /repos/.../issues` | 1+ (paginated) | Filters out PRs, body capped at 500 chars |
-| `pullRequests` | `GET /repos/.../pulls` | 1+ (paginated) | Includes draft/merged status |
-| `milestones` | `GET /repos/.../milestones` | 1+ | All states |
-| `discussions` | _(GraphQL — not yet implemented)_ | 0 | Returns empty |
+Issues, PRs, traffic, milestones — the pulse of the project.
 
-### Tier 3 — Security (includes Tier 1 + 2)
+| Section | API Endpoint | Calls | Notes |
+|---------|-------------|-------|-------|
+| `traffic` | `.../traffic/views` + `.../traffic/clones` | 2 | Requires push/admin access. Degrades gracefully on 403. |
+| `issues` | `GET /repos/.../issues` | 1+ | Filters out PRs. Body capped at 500 chars. |
+| `pullRequests` | `GET /repos/.../pulls` | 1+ | Includes draft/merged status, head/base refs. |
+| `milestones` | `GET /repos/.../milestones` | 1+ | All states (open + closed). |
+| `discussions` | _(GraphQL — stub)_ | 0 | Returns empty. Planned for future release. |
 
-| Section | GitHub API | Calls | Notes |
-|---------|-----------|-------|-------|
-| `dependabotAlerts` | `GET /repos/.../dependabot/alerts` | 1 | Requires `security_events` scope |
-| `securityAdvisories` | `GET /repos/.../security-advisories` | 1 | Repo-level advisories |
-| `sbom` | `GET /repos/.../dependency-graph/sbom` | 1 | SPDX format, packages + licenses |
-| `codeScanningAlerts` | `GET /repos/.../code-scanning/alerts` | 1 | CodeQL, Semgrep, etc. |
-| `secretScanningAlerts` | `GET /repos/.../secret-scanning/alerts` | 1 | Leaked tokens/keys |
+### Tier 3 — Security & Compliance (includes Tier 1 + 2)
 
-**Permission tracking**: Each Tier 3 section returns `granted`, `denied`, or `not_enabled` so you know exactly what's accessible.
+Vulnerability data, dependency analysis, leaked secrets.
 
-**Graceful degradation**: A 403 on Dependabot doesn't block the rest — each section is fetched independently.
+| Section | API Endpoint | Calls | Notes |
+|---------|-------------|-------|-------|
+| `dependabotAlerts` | `GET /repos/.../dependabot/alerts` | 1 | CVE/GHSA IDs, patched versions, severity. |
+| `securityAdvisories` | `GET /repos/.../security-advisories` | 1 | Repo-level advisories with vulnerability details. |
+| `sbom` | `GET /repos/.../dependency-graph/sbom` | 1 | SPDX format. Packages, versions, licenses, ecosystems. |
+| `codeScanningAlerts` | `GET /repos/.../code-scanning/alerts` | 1 | CodeQL, Semgrep, etc. Rule IDs, file locations. |
+| `secretScanningAlerts` | `GET /repos/.../secret-scanning/alerts` | 1 | Leaked tokens/keys. Push protection bypass tracking. |
+
+**Permission tracking:** Every Tier 3 section returns a permission status (`granted`, `denied`, or `not_enabled`) so the agent knows exactly what's accessible and what requires elevated access.
+
+**Graceful degradation:** Each section is fetched independently. A 403 on code scanning doesn't block Dependabot or SBOM.
+
+## Examples
+
+### Quick repo triage
+```
+get_repo_summary({ owner: "expressjs", repo: "express" })
+```
+
+### Deep security audit
+```
+crawl_repo({ owner: "myorg", repo: "api-server", tier: "3" })
+```
+
+### Compare frameworks
+```
+compare_repos({ repos: [
+  { owner: "sveltejs", repo: "svelte" },
+  { owner: "vuejs", repo: "core" },
+  { owner: "facebook", repo: "react" }
+], aspects: ["metadata", "activity", "community"] })
+```
+
+### Export issues to CSV
+```
+const result = crawl_repo({ owner: "myorg", repo: "app", tier: "2", sections: ["issues"] })
+export_data({ data: result, format: "csv" })
+```
+
+### Org-wide vulnerability scan
+```
+crawl_org({ org: "myorg", tier: "3", alert_limit: 50 })
+```
 
 ## Development
 
 ```bash
 npm install
-npm run typecheck
-npm test
-npm run build
+npm run typecheck    # Type check with tsc
+npm test             # Run tests with vitest
+npm run build        # Compile to build/
 ```
+
+### Test Coverage
+
+60 tests across 5 test files:
+- **Validation** — owner/repo regex, URL parsing, edge cases
+- **CSV escaping** — formula injection vectors, quoting, special chars
+- **Markdown escaping** — pipe and newline escaping
+- **GitHub adapter** — Tier 1/2/3 fetching, section filtering, error handling, permission tracking
+- **Tool schemas** — Zod validation, param defaults
 
 ## Architecture
 
 ```
 src/
-  index.ts              # Entry point
+  index.ts              # Entry point (shebang for npx)
   server.ts             # MCP server setup + tool registration
-  types.ts              # All interfaces, Zod schemas, error codes
+  types.ts              # All interfaces, Zod schemas, error codes, tier constants
   adapters/
     types.ts            # Platform-agnostic adapter interface
-    github.ts           # GitHub API via Octokit
+    github.ts           # GitHub API via Octokit (Tier 1/2/3)
   tools/
-    crawlRepo.ts        # crawl_repo tool
-    crawlOrg.ts         # crawl_org tool
-    repoSummary.ts      # get_repo_summary tool
-    compareRepos.ts     # compare_repos tool
-    exportData.ts       # export_data tool
+    crawlRepo.ts        # crawl_repo — single repo crawling
+    crawlOrg.ts         # crawl_org — org-wide crawling with filters
+    repoSummary.ts      # get_repo_summary — lightweight 4-call summary
+    compareRepos.ts     # compare_repos — side-by-side comparison
+    exportData.ts       # export_data — JSON/CSV/Markdown export
   utils/
-    logger.ts           # Stderr-only logger
-    errors.ts           # Structured error handling
-    validation.ts       # Owner/repo/URL validation
-    csvEscape.ts        # Safe CSV escaping
-    mdEscape.ts         # Safe Markdown escaping
+    logger.ts           # Stderr-only logger (stdout reserved for MCP)
+    errors.ts           # CrawlerError class, structured error responses
+    validation.ts       # Owner/repo/URL validation with regex
+    csvEscape.ts        # Formula injection prevention + CSV quoting
+    mdEscape.ts         # Pipe escaping, newline removal for tables
 ```
+
+### Design Principles
+
+- **Section-selective fetching** — Don't pay for what you don't use. Request `sections: ["metadata", "issues"]` and only those APIs get called.
+- **Parallel where safe** — Independent single-call endpoints (metadata, tree, languages, readme, community) run via `Promise.allSettled`. Paginated endpoints run sequentially with early termination.
+- **Graceful degradation** — Every API call is wrapped in try/catch. A single failure returns a default value, never crashes the crawl.
+- **Permission awareness** — Tier 3 tracks which security endpoints returned 403 vs 404. The agent can reason about what access it has.
 
 ## License
 
-MIT
+[MIT](LICENSE)
