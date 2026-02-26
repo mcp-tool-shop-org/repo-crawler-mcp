@@ -1,48 +1,55 @@
 <p align="center">
-  <a href="README.md">English</a> | <strong>日本語</strong> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.hi.md">हिन्दी</a> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português</a>
+  <a href="README.md">English</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.hi.md">हिन्दी</a> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português (BR)</a>
 </p>
 
 <p align="center">
-  <img src="logo.png" alt="mcp-tool-shop" width="200" />
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/repo-crawler-mcp/readme.png" alt="Repo Crawler MCP" width="400" />
 </p>
 
 <h1 align="center">Repo Crawler MCP</h1>
 
 <p align="center">
-  GitHubリポジトリをAIエージェント向けの構造化データに変換するMCPサーバー。<br>
-  メタデータ、Issue、セキュリティアラート、SBOM — すべてを1回のツールコールで。
+  An MCP server that turns GitHub repositories into structured intelligence for AI agents.<br>
+  Metadata, issues, security alerts, SBOMs — all through one tool call.
 </p>
 
 <p align="center">
-  <a href="#クイックスタート">クイックスタート</a> &middot;
-  <a href="#ツール">ツール</a> &middot;
-  <a href="#データティア">データティア</a> &middot;
-  <a href="#設定">設定</a> &middot;
-  <a href="#アーキテクチャ">アーキテクチャ</a> &middot;
-  <a href="#ライセンス">ライセンス</a>
+  <a href="https://github.com/mcp-tool-shop-org/repo-crawler-mcp/actions/workflows/ci.yml"><img src="https://github.com/mcp-tool-shop-org/repo-crawler-mcp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/@mcptoolshop/repo-crawler-mcp"><img src="https://img.shields.io/npm/v/@mcptoolshop/repo-crawler-mcp" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
+  <a href="https://mcp-tool-shop-org.github.io/repo-crawler-mcp/"><img src="https://img.shields.io/badge/Landing_Page-live-blue" alt="Landing Page"></a>
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &middot;
+  <a href="#tools">Tools</a> &middot;
+  <a href="#data-tiers">Data Tiers</a> &middot;
+  <a href="#configuration">Configuration</a> &middot;
+  <a href="#architecture">Architecture</a> &middot;
+  <a href="#license">License</a>
 </p>
 
 ---
 
-## なぜ必要か
+## なぜか
 
-コードを扱うAIエージェントはリポジトリを理解する必要があります。ファイルだけでなく、全体像が必要です：誰がコントリビュートしているか、何が壊れているか、どの依存関係に脆弱性があるか、プロジェクトがどれだけ活発か。手作業でスクレイピングするとAPIクォータとコンテキストウィンドウを消費します。
+コードを扱うAIエージェントは、リポジトリを理解する必要があります。単にファイルだけでなく、全体像を把握する必要があります。具体的には、誰が貢献しているか、何が壊れているか、どの依存関係に脆弱性があるか、プロジェクトの活動状況などを理解する必要があります。これらを手動で収集すると、APIの利用制限やコンテキストウィンドウを圧迫してしまいます。
 
-**Repo Crawler MCP**はGitHubのデータ全体を構造化されたMCPツールとして公開します。`crawl_repo`を`tier: '3'`で1回呼び出すだけで、メタデータ、ファイルツリー、言語、README、コミット、コントリビューター、ブランチ、タグ、リリース、コミュニティヘルス、CIワークフロー、Issue、PR、トラフィック、マイルストーン、Dependabotアラート、セキュリティアドバイザリ、SBOM、コードスキャンアラート、シークレットスキャンアラートを取得できます。すべてセクション選択可能、レート制限付き、グレースフルデグラデーション対応です。
+**Repo Crawler MCP** は、GitHubのすべてのデータを構造化されたMCPツールとして公開します。`crawl_repo` コマンドを `tier: '3'` オプション付きで1回実行するだけで、メタデータ、ファイルツリー、使用言語、README、コミット履歴、貢献者、ブランチ、タグ、リリース情報、コミュニティの状況、CIワークフロー、課題、プルリクエスト、トラフィック、マイルストーン、Dependabotのアラート、セキュリティに関するアドバイス、SBOM（ソフトウェア部品表）、コードスキャンアラート、およびシークレットスキャンアラートなど、あらゆる情報を取得できます。これらの情報は、セクションごとに選択可能で、レート制限があり、また、エラー発生時にも適切に処理されます。
 
-## 特徴
+## 機能
 
-- **5つのMCPツール** — リポジトリのクロール、組織のクロール、要約、比較、エクスポート
-- **3段階データモデル** — 軽量から開始、必要に応じて深堀り
-- **セクション選択フェッチ** — 必要なAPIのみ呼び出し、クォータを節約
-- **グレースフルデグラデーション** — Dependabotの403がクロール全体を停止させません。セクションごとに権限を追跡
-- **レート制限内蔵** — Octokitスロットリングと429時の自動リトライ
-- **安全なエクスポート** — 数式インジェクション防止付きCSV、パイプエスケープ付きMarkdown
-- **アダプターパターン** — GitHub対応、GitLab/Bitbucketへ拡張可能
+- **5つのMCPツール**：リポジトリのクロール、組織のクロール、要約、比較、エクスポート
+- **3段階のデータモデル**：最初は軽く、必要に応じて詳細な情報を取得
+- **セクションごとの取得**：必要なAPIのみを呼び出すことで、利用制限を節約
+- **エラー発生時の適切な処理**：Dependabotでエラーが発生しても、クロール全体が停止しない。各セクションごとに権限が管理される
+- **組み込みのレート制限**：Octokitによるスロットリング。429エラーが発生した場合、自動的にリトライ
+- **安全なエクスポート**：CSVファイルは、数式インジェクションを防止。Markdownファイルは、パイプ記号のエスケープ処理
+- **アダプターパターン**：GitHubを基本とし、GitLab/Bitbucketへの拡張が可能
 
 ## クイックスタート
 
-### Claude Codeで使用
+### Claude Codeを使用する場合
 
 ```json
 {
@@ -58,70 +65,70 @@
 }
 ```
 
-### Claude Desktopで使用
+### Claude Desktopを使用する場合
 
-同じ設定を`claude_desktop_config.json`に追加してください。
+`claude_desktop_config.json` ファイルに、同じ設定を追加してください。
 
 ### 設定
 
 | 変数 | 必須 | 説明 |
-|------|------|------|
-| `GITHUB_TOKEN` | 推奨 | GitHub個人アクセストークン。なし：60リクエスト/時。あり：5,000リクエスト/時。 |
+| ---------- | ---------- | ------------- |
+| `GITHUB_TOKEN` | 推奨 | GitHubのパーソナルアクセス トークン。これがない場合、1時間あたり60件のアクセスに制限されます。これがある場合、1時間あたり5,000件のアクセスが可能になります。 |
 
-**ティアごとのトークンスコープ：**
+**ティアごとのトークンスコープ:**
 
 | ティア | 必要なスコープ |
-|--------|---------------|
-| ティア1 | `public_repo`（プライベートリポジトリの場合は`repo`） |
-| ティア2 | 同上 + トラフィックデータ用のpush/admin権限 |
-| ティア3 | 同上 + Dependabot、コードスキャン、シークレットスキャン用の`security_events` |
+| ------ | ---------------- |
+| ティア1 | `public_repo` (または、プライベートリポジトリの場合は `repo`) |
+| ティア2 | 上記 + トラフィックデータ取得のための `push/admin` アクセス |
+| ティア3 | 上記 + Dependabot、コードスキャン、シークレットスキャンに必要な `security_events` |
 
 ## ツール
 
 ### `crawl_repo`
 
-メインツール。単一リポジトリを任意のデータティアでクロール。
+メインのツール。任意のデータティアのリポジトリをクロールします。
 
 ```
 crawl_repo({ owner: "facebook", repo: "react", tier: "2" })
 ```
 
-| パラメータ | 型 | デフォルト | 説明 |
-|-----------|------|---------|------|
-| `owner` | string | — | リポジトリオーナー |
+| パラメータ | 型 | デフォルト値 | 説明 |
+| ------- | ------ | --------- | ------------- |
+| `owner` | string | — | リポジトリの所有者 |
 | `repo` | string | — | リポジトリ名 |
-| `tier` | `'1'` \| `'2'` \| `'3'` | `'1'` | データティア |
-| `sections` | string[] | すべて | 含めるセクション |
-| `exclude_sections` | string[] | なし | スキップするセクション |
-| `commit_limit` | number | 30 | 最大コミット数（ティア1） |
-| `contributor_limit` | number | 30 | 最大コントリビューター数（ティア1） |
-| `issue_limit` | number | 100 | 最大Issue数（ティア2） |
-| `pr_limit` | number | 100 | 最大PR数（ティア2） |
-| `issue_state` | `'open'` \| `'closed'` \| `'all'` | `'all'` | Issue/PRフィルター（ティア2） |
-| `alert_limit` | number | 100 | 最大セキュリティアラート数（ティア3） |
+| `tier` | `'1'` | `'2'` | `'3'` | `'1'` | データティア |
+| `sections` | string[] | all (すべて) | 含めるセクション |
+| `exclude_sections` | string[] | none (なし) | 除外するセクション |
+| `commit_limit` | number | 30 | 最大コミット数 (ティア1) |
+| `contributor_limit` | number | 30 | 最大貢献者数 (ティア1) |
+| `issue_limit` | number | 100 | 最大課題数 (ティア2) |
+| `pr_limit` | number | 100 | 最大プルリクエスト数 (ティア2) |
+| `issue_state` | `'open'` (オープン) | `'closed'` (クローズ) | `'all'` | `'all'` | 課題/プルリクエストのフィルタ (ティア2) |
+| `alert_limit` | number | 100 | 最大セキュリティアラート数 (ティア3) |
 
 ### `crawl_org`
 
-組織内のすべてのリポジトリをフィルター付きでクロール。
+組織内のすべてのリポジトリを、フィルタリングしてクロールします。
 
 ```
 crawl_org({ org: "vercel", tier: "1", min_stars: 100, language: "TypeScript" })
 ```
 
-| パラメータ | 型 | デフォルト | 説明 |
-|-----------|------|---------|------|
+| パラメータ | 型 | デフォルト値 | 説明 |
+| ------- | ------ | --------- | ------------- |
 | `org` | string | — | 組織名 |
-| `tier` | `'1'` \| `'2'` \| `'3'` | `'1'` | リポジトリごとのデータティア |
-| `min_stars` | number | 0 | 最小スター数 |
-| `language` | string | any | 主要言語でフィルター |
-| `include_forks` | boolean | false | フォークを含める |
-| `include_archived` | boolean | false | アーカイブを含める |
-| `repo_limit` | number | 30 | 最大リポジトリ数 |
-| `alert_limit` | number | 30 | リポジトリごとの最大セキュリティアラート数（ティア3） |
+| `tier` | `'1'` | `'2'` | `'3'` | `'1'` | Data tier per repo |
+| `min_stars` | 数値 | 0 | 最小スター数 |
+| `language` | 文字列 | 任意 | 主要言語でフィルタリング |
+| `include_forks` | 真偽値 | 偽 | フォークされたリポジトリを含める |
+| `include_archived` | 真偽値 | 偽 | アーカイブされたリポジトリを含める |
+| `repo_limit` | 数値 | 30 | クロールする最大リポジトリ数 |
+| `alert_limit` | 数値 | 30 | リポジトリごとのセキュリティアラートの最大数（Tier 3） |
 
 ### `get_repo_summary`
 
-素早い人間が読める要約。APIコール4回のみ — トリアージに最適。
+簡潔で人間が理解しやすい概要。API呼び出しはわずか4回。トリアージに最適です。
 
 ```
 get_repo_summary({ owner: "anthropics", repo: "claude-code" })
@@ -129,7 +136,7 @@ get_repo_summary({ owner: "anthropics", repo: "claude-code" })
 
 ### `compare_repos`
 
-2〜5個のリポジトリを横並び比較。スター、言語、アクティビティ、コミュニティヘルス、サイズ。
+2～5つのリポジトリを並べて比較。スター数、使用言語、アクティビティ、コミュニティの健全性、サイズを表示します。
 
 ```
 compare_repos({ repos: [
@@ -140,20 +147,20 @@ compare_repos({ repos: [
 
 ### `export_data`
 
-クロール結果をJSON、CSV、Markdownでエクスポート。CSVは数式インジェクション防止付き。
+クロール結果をJSON、CSV、またはMarkdown形式でエクスポートします。CSV形式では、数式インジェクション対策が含まれています。
 
 ```
 export_data({ data: crawlResult, format: "markdown", sections: ["metadata", "issues"] })
 ```
 
-## データティア
+## データ階層
 
-### ティア1 — リポジトリ基本情報
+### Tier 1 — リポジトリの基本情報
 
-リポジトリを一目で理解するために必要なすべて。
+リポジトリを一目で理解するために必要な情報がすべて含まれています。
 
-| セクション | APIエンドポイント | コール数 |
-|-----------|-----------------|---------|
+| セクション | APIエンドポイント | 呼び出し回数 |
+| --------- | ------------- | ------- |
 | `metadata` | `GET /repos/{owner}/{repo}` | 1 |
 | `tree` | `GET /repos/.../git/trees/{sha}?recursive=1` | 1 |
 | `languages` | `GET /repos/.../languages` | 1 |
@@ -166,39 +173,39 @@ export_data({ data: crawlResult, format: "markdown", sections: ["metadata", "iss
 | `community` | `GET /repos/.../community/profile` | 1 |
 | `workflows` | `GET /repos/.../actions/workflows` | 1 |
 
-**予算：フルクロールあたり約11 APIコール。トークン使用時は毎時約450回のフルクロールが可能。**
+**予算：完全なクロールあたり、約11回のAPI呼び出し。トークンを使用した場合、1時間あたり約450回の完全クロールが可能です。**
 
-### ティア2 — プロジェクトアクティビティ（ティア1を含む）
+### Tier 2 — プロジェクトのアクティビティ（Tier 1を含む）
 
-Issue、PR、トラフィック、マイルストーン — プロジェクトの脈拍。
+課題、プルリクエスト、トラフィック、マイルストーンなど、プロジェクトの状況を把握できます。
 
-| セクション | APIエンドポイント | コール数 | 備考 |
-|-----------|-----------------|---------|------|
-| `traffic` | `.../traffic/views` + `.../traffic/clones` | 2 | push/admin権限が必要。403時はグレースフルデグラデーション。 |
-| `issues` | `GET /repos/.../issues` | 1+ | PRを除外。本文は500文字に制限。 |
-| `pullRequests` | `GET /repos/.../pulls` | 1+ | ドラフト/マージ状態、head/baseリファレンスを含む。 |
-| `milestones` | `GET /repos/.../milestones` | 1+ | 全状態（open + closed）。 |
-| `discussions` | _（GraphQL — スタブ）_ | 0 | 空を返す。将来のリリースで予定。 |
+| セクション | APIエンドポイント | 呼び出し回数 | 備考 |
+| --------- | ------------- | ------- | ------- |
+| `traffic` | `.../traffic/views` + `.../traffic/clones` | 2 | push/admin権限が必要です。403エラーが発生した場合でも、機能は低下しません。 |
+| `issues` | `GET /repos/.../issues` | 1+ | プルリクエストを除外します。本文は500文字までに制限されます。 |
+| `pullRequests` | `GET /repos/.../pulls` | 1+ | ドラフト/マージの状態、head/base refsを含みます。 |
+| `milestones` | `GET /repos/.../milestones` | 1+ | すべての状態（オープン + クローズド）。 |
+| `discussions` | _(GraphQL — プレビュー版)_ | 0 | 空の値が返されます。将来のリリースで実装予定です。 |
 
-### ティア3 — セキュリティ＆コンプライアンス（ティア1 + 2を含む）
+### Tier 3 — セキュリティとコンプライアンス（Tier 1 + 2を含む）
 
-脆弱性データ、依存関係分析、漏洩シークレット。
+脆弱性データ、依存関係分析、漏洩したシークレットなど。
 
-| セクション | APIエンドポイント | コール数 | 備考 |
-|-----------|-----------------|---------|------|
-| `dependabotAlerts` | `GET /repos/.../dependabot/alerts` | 1 | CVE/GHSA ID、パッチ済みバージョン、重大度。 |
-| `securityAdvisories` | `GET /repos/.../security-advisories` | 1 | リポジトリレベルのアドバイザリと脆弱性詳細。 |
-| `sbom` | `GET /repos/.../dependency-graph/sbom` | 1 | SPDX形式。パッケージ、バージョン、ライセンス、エコシステム。 |
-| `codeScanningAlerts` | `GET /repos/.../code-scanning/alerts` | 1 | CodeQL、Semgrep等。ルールID、ファイル位置。 |
-| `secretScanningAlerts` | `GET /repos/.../secret-scanning/alerts` | 1 | 漏洩したトークン/キー。プッシュ保護バイパス追跡。 |
+| セクション | APIエンドポイント | 呼び出し回数 | 備考 |
+| --------- | ------------- | ------- | ------- |
+| `dependabotAlerts` | `GET /repos/.../dependabot/alerts` | 1 | CVE/GHSA ID、修正されたバージョン、深刻度。 |
+| `securityAdvisories` | `GET /repos/.../security-advisories` | 1 | リポジトリレベルのアドバイザリで、脆弱性の詳細を表示します。 |
+| `sbom` | `GET /repos/.../dependency-graph/sbom` | 1 | SPDX形式。パッケージ、バージョン、ライセンス、エコシステムの情報が含まれます。 |
+| `codeScanningAlerts` | `GET /repos/.../code-scanning/alerts` | 1 | CodeQL、Semgrepなど。ルールID、ファイル場所の情報が含まれます。 |
+| `secretScanningAlerts` | `GET /repos/.../secret-scanning/alerts` | 1 | 漏洩したトークン/キーの情報。push保護のバイパス状況を追跡します。 |
 
-**権限追跡：** 各ティア3セクションは権限ステータス（`granted`、`denied`、`not_enabled`）を返すため、エージェントはアクセス可能な範囲と昇格が必要な箇所を正確に把握できます。
+**権限の追跡：** Tier 3の各セクションでは、権限の状態（`granted`、`denied`、または`not_enabled`）が返されるため、エージェントはアクセス可能なものと、より高い権限が必要なものを正確に把握できます。
 
-**グレースフルデグラデーション：** 各セクションは独立してフェッチされます。コードスキャンの403がDependabotやSBOMをブロックしません。
+**段階的な機能低下：** 各セクションは独立して取得されます。コードスキャンで403エラーが発生しても、DependabotやSBOMは機能します。
 
-## 使用例
+## 例
 
-### 素早いリポジトリトリアージ
+### リポジトリの初期トリアージ
 ```
 get_repo_summary({ owner: "expressjs", repo: "express" })
 ```
@@ -208,7 +215,7 @@ get_repo_summary({ owner: "expressjs", repo: "express" })
 crawl_repo({ owner: "myorg", repo: "api-server", tier: "3" })
 ```
 
-### フレームワーク比較
+### フレームワークの比較
 ```
 compare_repos({ repos: [
   { owner: "sveltejs", repo: "svelte" },
@@ -217,7 +224,7 @@ compare_repos({ repos: [
 ], aspects: ["metadata", "activity", "community"] })
 ```
 
-### IssueをCSVにエクスポート
+### 課題をCSV形式でエクスポート
 ```
 const result = crawl_repo({ owner: "myorg", repo: "app", tier: "2", sections: ["issues"] })
 export_data({ data: result, format: "csv" })
@@ -232,51 +239,55 @@ crawl_org({ org: "myorg", tier: "3", alert_limit: 50 })
 
 ```bash
 npm install
-npm run typecheck    # tscで型チェック
-npm test             # vitestでテスト実行
-npm run build        # build/にコンパイル
+npm run typecheck    # Type check with tsc
+npm test             # Run tests with vitest
+npm run build        # Compile to build/
 ```
 
 ### テストカバレッジ
 
-5つのテストファイルにわたる60テスト：
-- **バリデーション** — オーナー/リポジトリ正規表現、URL解析、エッジケース
-- **CSVエスケープ** — 数式インジェクションベクター、クォート、特殊文字
-- **Markdownエスケープ** — パイプと改行のエスケープ
-- **GitHubアダプター** — ティア1/2/3フェッチ、セクションフィルタリング、エラーハンドリング、権限追跡
-- **ツールスキーマ** — Zodバリデーション、パラメータデフォルト
+5つのテストファイルにまたがる60個のテスト：
+- **検証：** owner/repoの正規表現、URLの解析、エッジケース
+- **CSVのエスケープ：** 数式インジェクションの対策、引用符、特殊文字
+- **Markdownのエスケープ：** パイプと改行のエスケープ
+- **GitHubアダプター：** Tier 1/2/3の取得、セクションのフィルタリング、エラー処理、権限の追跡
+- **ツールのスキーマ：** Zodによる検証、パラメータのデフォルト値
 
 ## アーキテクチャ
 
 ```
 src/
-  index.ts              # エントリーポイント（npx用shebang）
-  server.ts             # MCPサーバーセットアップ + ツール登録
-  types.ts              # 全インターフェース、Zodスキーマ、エラーコード、ティア定数
+  index.ts              # Entry point (shebang for npx)
+  server.ts             # MCP server setup + tool registration
+  types.ts              # All interfaces, Zod schemas, error codes, tier constants
   adapters/
-    types.ts            # プラットフォーム非依存アダプターインターフェース
-    github.ts           # Octokit経由のGitHub API（ティア1/2/3）
+    types.ts            # Platform-agnostic adapter interface
+    github.ts           # GitHub API via Octokit (Tier 1/2/3)
   tools/
-    crawlRepo.ts        # crawl_repo — 単一リポジトリクロール
-    crawlOrg.ts         # crawl_org — フィルター付き組織クロール
-    repoSummary.ts      # get_repo_summary — 軽量4コール要約
-    compareRepos.ts     # compare_repos — 横並び比較
-    exportData.ts       # export_data — JSON/CSV/Markdownエクスポート
+    crawlRepo.ts        # crawl_repo — single repo crawling
+    crawlOrg.ts         # crawl_org — org-wide crawling with filters
+    repoSummary.ts      # get_repo_summary — lightweight 4-call summary
+    compareRepos.ts     # compare_repos — side-by-side comparison
+    exportData.ts       # export_data — JSON/CSV/Markdown export
   utils/
-    logger.ts           # stderr専用ロガー（stdoutはMCP用に予約）
-    errors.ts           # CrawlerErrorクラス、構造化エラーレスポンス
-    validation.ts       # オーナー/リポジトリ/URLバリデーション（正規表現）
-    csvEscape.ts        # 数式インジェクション防止 + CSVクォート
-    mdEscape.ts         # パイプエスケープ、テーブル用改行除去
+    logger.ts           # Stderr-only logger (stdout reserved for MCP)
+    errors.ts           # CrawlerError class, structured error responses
+    validation.ts       # Owner/repo/URL validation with regex
+    csvEscape.ts        # Formula injection prevention + CSV quoting
+    mdEscape.ts         # Pipe escaping, newline removal for tables
 ```
 
 ### 設計原則
 
-- **セクション選択フェッチ** — 使わないものにコストをかけない。`sections: ["metadata", "issues"]`をリクエストすると、そのAPIだけが呼び出されます。
-- **安全な場合は並列実行** — 独立した単一コールエンドポイント（metadata、tree、languages、readme、community）は`Promise.allSettled`で実行。ページネーション付きエンドポイントは早期終了付きで順次実行。
-- **グレースフルデグラデーション** — すべてのAPIコールはtry/catchでラップ。単一の失敗はデフォルト値を返し、クロールをクラッシュさせません。
-- **権限認識** — ティア3はどのセキュリティエンドポイントが403 vs 404を返したかを追跡。エージェントはアクセス権について推論できます。
+- **セクション単位でのデータ取得**：不要なデータに対しては料金が発生しません。`sections: ["metadata", "issues"]` を指定すると、指定されたAPIのみが呼び出されます。
+- **可能な場合は並列処理**：独立した単一のAPIエンドポイント（メタデータ、ツリー構造、言語、README、コミュニティ）は、`Promise.allSettled` を使用して並列で実行されます。ページネーションされたエンドポイントは、順次で実行され、必要に応じて早期に終了します。
+- **エラー発生時の安全な処理**：すべてのAPI呼び出しは、try/catchブロックで囲まれています。エラーが発生した場合でも、デフォルト値が返され、クローリングが中断されることはありません。
+- **権限の認識**：Tier 3では、どのセキュリティエンドポイントが403エラー（アクセス拒否）または404エラー（リソースが見つからない）を返したかを追跡します。これにより、エージェントは自身のアクセス権限について推測することができます。
 
 ## ライセンス
 
 [MIT](LICENSE)
+
+---
+
+<a href="https://mcp-tool-shop.github.io/">MCP Tool Shop</a> が作成しました。

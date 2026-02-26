@@ -1,48 +1,55 @@
 <p align="center">
-  <a href="README.md">English</a> | <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <strong>हिन्दी</strong> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português</a>
+  <a href="README.ja.md">日本語</a> | <a href="README.zh.md">中文</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.md">English</a> | <a href="README.it.md">Italiano</a> | <a href="README.pt-BR.md">Português (BR)</a>
 </p>
 
 <p align="center">
-  <img src="logo.png" alt="mcp-tool-shop" width="200" />
+  <img src="https://raw.githubusercontent.com/mcp-tool-shop-org/brand/main/logos/repo-crawler-mcp/readme.png" alt="Repo Crawler MCP" width="400" />
 </p>
 
 <h1 align="center">Repo Crawler MCP</h1>
 
 <p align="center">
-  एक MCP सर्वर जो GitHub रिपॉजिटरी को AI एजेंट्स के लिए संरचित डेटा में बदलता है।<br>
-  मेटाडेटा, इश्यूज़, सुरक्षा अलर्ट, SBOMs — सब एक टूल कॉल में।
+  An MCP server that turns GitHub repositories into structured intelligence for AI agents.<br>
+  Metadata, issues, security alerts, SBOMs — all through one tool call.
 </p>
 
 <p align="center">
-  <a href="#त्वरित-शुरुआत">त्वरित शुरुआत</a> &middot;
-  <a href="#टूल्स">टूल्स</a> &middot;
-  <a href="#डेटा-टियर">डेटा टियर</a> &middot;
-  <a href="#कॉन्फ़िगरेशन">कॉन्फ़िगरेशन</a> &middot;
-  <a href="#आर्किटेक्चर">आर्किटेक्चर</a> &middot;
-  <a href="#लाइसेंस">लाइसेंस</a>
+  <a href="https://github.com/mcp-tool-shop-org/repo-crawler-mcp/actions/workflows/ci.yml"><img src="https://github.com/mcp-tool-shop-org/repo-crawler-mcp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/@mcptoolshop/repo-crawler-mcp"><img src="https://img.shields.io/npm/v/@mcptoolshop/repo-crawler-mcp" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
+  <a href="https://mcp-tool-shop-org.github.io/repo-crawler-mcp/"><img src="https://img.shields.io/badge/Landing_Page-live-blue" alt="Landing Page"></a>
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &middot;
+  <a href="#tools">Tools</a> &middot;
+  <a href="#data-tiers">Data Tiers</a> &middot;
+  <a href="#configuration">Configuration</a> &middot;
+  <a href="#architecture">Architecture</a> &middot;
+  <a href="#license">License</a>
 </p>
 
 ---
 
 ## क्यों
 
-कोड के साथ काम करने वाले AI एजेंट्स को रिपॉजिटरी समझने की ज़रूरत होती है — सिर्फ़ फ़ाइलें नहीं, बल्कि पूरी तस्वीर: कौन कॉन्ट्रिब्यूट कर रहा है, क्या टूटा हुआ है, कौन सी डिपेंडेंसी कमज़ोर हैं, प्रोजेक्ट कितना सक्रिय है। इसे मैन्युअली स्क्रैप करना API कोटा और कॉन्टेक्स्ट विंडो बर्बाद करता है।
+एआई एजेंट जो कोड के साथ काम करते हैं, उन्हें रिपॉजिटरी को समझने की आवश्यकता होती है - न कि केवल फ़ाइलों को, बल्कि पूरे चित्र को: कौन योगदान देता है, क्या टूटा हुआ है, कौन से निर्भरताएं असुरक्षित हैं, परियोजना कितनी सक्रिय है। मैन्युअल रूप से इस जानकारी को निकालना एपीआई कोटा और संदर्भ विंडो का उपयोग करता है।
 
-**Repo Crawler MCP** GitHub की पूरी डेटा सतह को संरचित MCP टूल्स के रूप में उपलब्ध कराता है। `crawl_repo` को `tier: '3'` के साथ एक बार कॉल करें और आपको मिलेगा: मेटाडेटा, फ़ाइल ट्री, भाषाएँ, README, कमिट्स, कॉन्ट्रिब्यूटर्स, ब्रांचेज़, टैग्स, रिलीज़, कम्युनिटी हेल्थ, CI वर्कफ़्लोज़, इश्यूज़, PRs, ट्रैफ़िक, माइलस्टोन्स, Dependabot अलर्ट, सुरक्षा एडवाइज़री, SBOM, कोड स्कैनिंग अलर्ट, और सीक्रेट स्कैनिंग अलर्ट — सभी सेक्शन-सेलेक्टिव, रेट-लिमिटेड, और ग्रेसफ़ुल डिग्रेडेशन के साथ।
+**रेपो क्रॉलर एमसीपी** GitHub के संपूर्ण डेटा को संरचित एमसीपी उपकरणों के रूप में प्रस्तुत करता है। `crawl_repo` को `tier: '3'` के साथ एक बार कॉल करने से मेटाडेटा, फ़ाइल ट्री, भाषाएं, README, कमिट, योगदानकर्ता, शाखाएं, टैग, रिलीज़, समुदाय का स्वास्थ्य, सीआई वर्कफ़्लो, मुद्दे, पीआर, ट्रैफ़िक, मील के पत्थर, डिपेंडabot अलर्ट, सुरक्षा सलाह, एसबीओएम, कोड स्कैनिंग अलर्ट और सीक्रेट स्कैनिंग अलर्ट - सभी अनुभाग-विशिष्ट, सभी दर-सीमित, और सभी में सुचारू गिरावट होती है।
 
-## विशेषताएँ
+## विशेषताएं
 
-- **5 MCP टूल्स** — रिपोज़ क्रॉल करें, ऑर्ग क्रॉल करें, सारांश बनाएं, तुलना करें, एक्सपोर्ट करें
-- **3-टियर डेटा मॉडल** — हल्के से शुरू करें, ज़रूरत पड़ने पर गहराई में जाएं
-- **सेक्शन-सेलेक्टिव फ़ेचिंग** — सिर्फ़ वही APIs कॉल करता है जो आप मांगते हैं, कोटा बचाता है
-- **ग्रेसफ़ुल डिग्रेडेशन** — Dependabot पर 403 पूरे क्रॉल को नहीं रोकता; हर सेक्शन की अनुमतियां अलग से ट्रैक होती हैं
-- **बिल्ट-इन रेट लिमिटिंग** — Octokit थ्रॉटलिंग, 429 पर ऑटोमैटिक रीट्राई
-- **सुरक्षित एक्सपोर्ट** — फ़ॉर्मूला इंजेक्शन प्रिवेंशन के साथ CSV, पाइप एस्केपिंग के साथ Markdown
-- **एडाप्टर पैटर्न** — पहले GitHub, GitLab/Bitbucket तक विस्तार योग्य
+- **5 एमसीपी उपकरण** - रिपॉजिटरी क्रॉल करें, संगठनों को क्रॉल करें, सारांशित करें, तुलना करें, निर्यात करें
+- **3-स्तरीय डेटा मॉडल** - हल्के से शुरुआत करें, जब आपको आवश्यकता हो तो गहराई में जाएं
+- **अनुभाग-विशिष्ट फ़ेचिंग** - केवल उन एपीआई को कॉल करें जिन्हें आप मांगते हैं, जिससे कोटा बचता है
+- **सुचारू गिरावट** - डिपेंडabot पर 403 त्रुटि क्रॉल को बाधित नहीं करती है; अनुमतियां प्रत्येक अनुभाग के लिए ट्रैक की जाती हैं
+- **अंतर्निहित दर सीमा** - ऑक्टोकिट थ्रॉटलिंग, 429 त्रुटियों पर स्वचालित पुनः प्रयास
+- **सुरक्षित निर्यात** - सीएसवी जिसमें फ़ॉर्मूला इंजेक्शन से सुरक्षा, मार्कडाउन जिसमें पाइप एस्केपिंग
+- **एडाप्टर पैटर्न** - पहले GitHub, GitLab/Bitbucket के लिए विस्तार योग्य
 
-## त्वरित शुरुआत
+## शुरुआत कैसे करें
 
-### Claude Code के साथ
+### क्लाउड कोड के साथ
 
 ```json
 {
@@ -58,70 +65,70 @@
 }
 ```
 
-### Claude Desktop के साथ
+### क्लाउड डेस्कटॉप के साथ
 
-वही कॉन्फ़िगरेशन अपनी `claude_desktop_config.json` में जोड़ें।
+अपने `claude_desktop_config.json` में भी यही कॉन्फ़िगरेशन जोड़ें।
 
 ### कॉन्फ़िगरेशन
 
-| वेरिएबल | आवश्यक | विवरण |
-|---------|--------|-------|
-| `GITHUB_TOKEN` | अनुशंसित | GitHub पर्सनल एक्सेस टोकन। बिना: 60 रिक्वेस्ट/घंटा। साथ: 5,000 रिक्वेस्ट/घंटा। |
+| चर | आवश्यक | विवरण |
+| ---------- | ---------- | ------------- |
+| `GITHUB_TOKEN` | अनुशंसित | GitHub पर्सनल एक्सेस टोकन। इसके बिना: 60 अनुरोध/घंटा। इसके साथ: 5,000 अनुरोध/घंटा। |
 
-**टियर के अनुसार टोकन स्कोप:**
+**प्रत्येक स्तर के लिए टोकन स्कोप:**
 
-| टियर | आवश्यक स्कोप |
-|------|-------------|
-| टियर 1 | `public_repo` (प्राइवेट रिपोज़ के लिए `repo`) |
-| टियर 2 | वही + ट्रैफ़िक डेटा के लिए push/admin एक्सेस |
-| टियर 3 | वही + Dependabot, कोड स्कैनिंग, सीक्रेट स्कैनिंग के लिए `security_events` |
+| स्तर | आवश्यक स्कोप |
+| ------ | ---------------- |
+| स्तर 1 | `public_repo` (या निजी रिपॉजिटरी के लिए `repo`) |
+| स्तर 2 | ऊपर दिए गए + ट्रैफ़िक डेटा के लिए पुश/एडमिन एक्सेस |
+| स्तर 3 | ऊपर दिए गए + डिपेंडabot, कोड स्कैनिंग और सीक्रेट स्कैनिंग के लिए `security_events` |
 
-## टूल्स
+## उपकरण
 
 ### `crawl_repo`
 
-मुख्य टूल। किसी भी डेटा टियर पर एक रिपॉजिटरी क्रॉल करें।
+मुख्य उपकरण। किसी भी डेटा स्तर पर एक एकल रिपॉजिटरी को क्रॉल करें।
 
 ```
 crawl_repo({ owner: "facebook", repo: "react", tier: "2" })
 ```
 
-| पैरामीटर | टाइप | डिफ़ॉल्ट | विवरण |
-|---------|------|---------|-------|
-| `owner` | string | — | रिपॉजिटरी ओनर |
-| `repo` | string | — | रिपॉजिटरी नाम |
-| `tier` | `'1'` \| `'2'` \| `'3'` | `'1'` | डेटा टियर |
-| `sections` | string[] | सभी | शामिल करने के लिए विशिष्ट सेक्शन |
-| `exclude_sections` | string[] | कोई नहीं | छोड़ने के लिए सेक्शन |
-| `commit_limit` | number | 30 | अधिकतम कमिट्स (टियर 1) |
-| `contributor_limit` | number | 30 | अधिकतम कॉन्ट्रिब्यूटर्स (टियर 1) |
-| `issue_limit` | number | 100 | अधिकतम इश्यूज़ (टियर 2) |
-| `pr_limit` | number | 100 | अधिकतम PRs (टियर 2) |
-| `issue_state` | `'open'` \| `'closed'` \| `'all'` | `'all'` | इश्यू/PR फ़िल्टर (टियर 2) |
-| `alert_limit` | number | 100 | अधिकतम सुरक्षा अलर्ट (टियर 3) |
+| पैरामीटर | प्रकार | डिफ़ॉल्ट | विवरण |
+| ------- | ------ | --------- | ------------- |
+| `owner` | string | — | रिपॉजिटरी का स्वामी |
+| `repo` | string | — | रिपॉजिटरी का नाम |
+| `tier` | `'1'` | `'2'` | `'3'` | `'1'` | डेटा स्तर |
+| `sections` | string[] | सभी | शामिल करने के लिए विशिष्ट अनुभाग |
+| `exclude_sections` | string[] | कोई नहीं | छोड़ने के लिए अनुभाग |
+| `commit_limit` | number | 30 | अधिकतम कमिट (स्तर 1) |
+| `contributor_limit` | number | 30 | अधिकतम योगदानकर्ता (स्तर 1) |
+| `issue_limit` | number | 100 | अधिकतम मुद्दे (स्तर 2) |
+| `pr_limit` | number | 100 | अधिकतम पीआर (स्तर 2) |
+| `issue_state` | `'open'` | `'closed'` | `'all'` | `'all'` | मुद्दे/पीआर फ़िल्टर (स्तर 2) |
+| `alert_limit` | number | 100 | अधिकतम सुरक्षा अलर्ट (स्तर 3) |
 
 ### `crawl_org`
 
-फ़िल्टर के साथ एक ऑर्गनाइज़ेशन की सभी रिपोज़ क्रॉल करें।
+फ़िल्टर के साथ एक संगठन में प्रत्येक रिपॉजिटरी को क्रॉल करें।
 
 ```
 crawl_org({ org: "vercel", tier: "1", min_stars: 100, language: "TypeScript" })
 ```
 
-| पैरामीटर | टाइप | डिफ़ॉल्ट | विवरण |
-|---------|------|---------|-------|
-| `org` | string | — | ऑर्गनाइज़ेशन नाम |
-| `tier` | `'1'` \| `'2'` \| `'3'` | `'1'` | प्रति रिपो डेटा टियर |
-| `min_stars` | number | 0 | न्यूनतम स्टार काउंट |
-| `language` | string | any | प्राथमिक भाषा से फ़िल्टर |
-| `include_forks` | boolean | false | फ़ोर्क शामिल करें |
-| `include_archived` | boolean | false | आर्काइव्ड शामिल करें |
-| `repo_limit` | number | 30 | अधिकतम रिपोज़ |
-| `alert_limit` | number | 30 | प्रति रिपो अधिकतम सुरक्षा अलर्ट (टियर 3) |
+| पैरामीटर | प्रकार | डिफ़ॉल्ट | विवरण |
+| ------- | ------ | --------- | ------------- |
+| `org` | string | — | संगठन का नाम |
+| `tier` | `'1'` | `'2'` | `'3'` | `'1'` | Data tier per repo |
+| `min_stars` | संख्या | 0 | न्यूनतम स्टार की संख्या |
+| `language` | स्ट्रिंग | कोई भी | प्राथमिक भाषा के आधार पर फ़िल्टर करें |
+| `include_forks` | बूलियन | गलत | फोर्क किए गए रिपॉजिटरी को शामिल करें |
+| `include_archived` | बूलियन | गलत | आर्काइव किए गए रिपॉजिटरी को शामिल करें |
+| `repo_limit` | संख्या | 30 | स्कैन करने के लिए अधिकतम रिपॉजिटरी |
+| `alert_limit` | संख्या | 30 | प्रति रिपॉजिटरी अधिकतम सुरक्षा अलर्ट (टियर 3) |
 
 ### `get_repo_summary`
 
-तेज़ मानव-पठनीय सारांश। सिर्फ़ 4 API कॉल — ट्रायज के लिए आदर्श।
+त्वरित, आसानी से समझने योग्य सारांश। केवल 4 एपीआई कॉल - प्रारंभिक जांच के लिए आदर्श।
 
 ```
 get_repo_summary({ owner: "anthropics", repo: "claude-code" })
@@ -129,7 +136,7 @@ get_repo_summary({ owner: "anthropics", repo: "claude-code" })
 
 ### `compare_repos`
 
-2–5 रिपोज़ की साइड-बाई-साइड तुलना। स्टार्स, भाषाएँ, गतिविधि, कम्युनिटी हेल्थ, साइज़।
+2-5 रिपॉजिटरी की तुलना, एक साथ। स्टार, भाषाएं, गतिविधि, समुदाय स्वास्थ्य, आकार।
 
 ```
 compare_repos({ repos: [
@@ -140,7 +147,7 @@ compare_repos({ repos: [
 
 ### `export_data`
 
-क्रॉल रिज़ल्ट्स को JSON, CSV, या Markdown में एक्सपोर्ट करें। CSV में फ़ॉर्मूला इंजेक्शन प्रिवेंशन शामिल है।
+स्कैन के परिणामों को JSON, CSV या Markdown के रूप में निर्यात करें। CSV में फॉर्मूला इंजेक्शन से बचाव शामिल है।
 
 ```
 export_data({ data: crawlResult, format: "markdown", sections: ["metadata", "issues"] })
@@ -148,12 +155,12 @@ export_data({ data: crawlResult, format: "markdown", sections: ["metadata", "iss
 
 ## डेटा टियर
 
-### टियर 1 — रिपॉजिटरी बुनियादी बातें
+### टियर 1 — रिपॉजिटरी की बुनियादी जानकारी
 
-एक नज़र में रिपो समझने के लिए सब कुछ।
+वह सब कुछ जो आपको एक नज़र में रिपॉजिटरी को समझने के लिए आवश्यक है।
 
-| सेक्शन | API एंडपॉइंट | कॉल्स |
-|--------|-------------|-------|
+| अनुभाग | एपीआई एंडपॉइंट | कॉल |
+| --------- | ------------- | ------- |
 | `metadata` | `GET /repos/{owner}/{repo}` | 1 |
 | `tree` | `GET /repos/.../git/trees/{sha}?recursive=1` | 1 |
 | `languages` | `GET /repos/.../languages` | 1 |
@@ -166,39 +173,39 @@ export_data({ data: crawlResult, format: "markdown", sections: ["metadata", "iss
 | `community` | `GET /repos/.../community/profile` | 1 |
 | `workflows` | `GET /repos/.../actions/workflows` | 1 |
 
-**बजट: प्रति पूर्ण क्रॉल ~11 API कॉल। टोकन के साथ ~450 पूर्ण क्रॉल/घंटा।**
+**बजट: प्रति पूर्ण स्कैन लगभग 11 एपीआई कॉल। टोकन के साथ प्रति घंटा लगभग 450 पूर्ण स्कैन।**
 
 ### टियर 2 — प्रोजेक्ट गतिविधि (टियर 1 शामिल)
 
-इश्यूज़, PRs, ट्रैफ़िक, माइलस्टोन्स — प्रोजेक्ट की धड़कन।
+इश्यू, पीआर, ट्रैफ़िक, मील के पत्थर - परियोजना की गति।
 
-| सेक्शन | API एंडपॉइंट | कॉल्स | नोट्स |
-|--------|-------------|-------|-------|
-| `traffic` | `.../traffic/views` + `.../traffic/clones` | 2 | push/admin एक्सेस आवश्यक। 403 पर ग्रेसफ़ुल डिग्रेडेशन। |
-| `issues` | `GET /repos/.../issues` | 1+ | PRs को फ़िल्टर करता है। बॉडी 500 अक्षरों तक सीमित। |
-| `pullRequests` | `GET /repos/.../pulls` | 1+ | ड्राफ़्ट/मर्ज़्ड स्टेटस, head/base refs शामिल। |
-| `milestones` | `GET /repos/.../milestones` | 1+ | सभी स्टेट (open + closed)। |
-| `discussions` | _(GraphQL — स्टब)_ | 0 | खाली लौटाता है। भविष्य के रिलीज़ में योजनाबद्ध। |
+| अनुभाग | एपीआई एंडपॉइंट | कॉल | टिप्पणियाँ |
+| --------- | ------------- | ------- | ------- |
+| `traffic` | `.../traffic/views` + `.../traffic/clones` | 2 | पुश/एडमिन एक्सेस की आवश्यकता है। 403 त्रुटि होने पर भी ठीक से काम करता है। |
+| `issues` | `GET /repos/.../issues` | 1+ | पीआर को फ़िल्टर करता है। बॉडी 500 वर्णों तक सीमित है। |
+| `pullRequests` | `GET /repos/.../pulls` | 1+ | ड्राफ्ट/मर्ज स्थिति, हेड/बेस रेफ शामिल हैं। |
+| `milestones` | `GET /repos/.../milestones` | 1+ | सभी स्थितियां (खुले + बंद)। |
+| `discussions` | _(GraphQL — स्टब)_ | 0 | खाली मान लौटाता है। भविष्य में जारी करने की योजना है। |
 
 ### टियर 3 — सुरक्षा और अनुपालन (टियर 1 + 2 शामिल)
 
-भेद्यता डेटा, डिपेंडेंसी विश्लेषण, लीक हुए सीक्रेट्स।
+भेद्यता डेटा, निर्भरता विश्लेषण, लीक हुए गुप्त जानकारी।
 
-| सेक्शन | API एंडपॉइंट | कॉल्स | नोट्स |
-|--------|-------------|-------|-------|
-| `dependabotAlerts` | `GET /repos/.../dependabot/alerts` | 1 | CVE/GHSA IDs, पैच किए गए वर्शन, गंभीरता। |
-| `securityAdvisories` | `GET /repos/.../security-advisories` | 1 | भेद्यता विवरण के साथ रिपो-स्तरीय एडवाइज़री। |
-| `sbom` | `GET /repos/.../dependency-graph/sbom` | 1 | SPDX फ़ॉर्मेट। पैकेज, वर्शन, लाइसेंस, इकोसिस्टम। |
-| `codeScanningAlerts` | `GET /repos/.../code-scanning/alerts` | 1 | CodeQL, Semgrep, आदि। रूल IDs, फ़ाइल लोकेशन। |
-| `secretScanningAlerts` | `GET /repos/.../secret-scanning/alerts` | 1 | लीक हुए टोकन/कीज़। पुश प्रोटेक्शन बाईपास ट्रैकिंग। |
+| अनुभाग | एपीआई एंडपॉइंट | कॉल | टिप्पणियाँ |
+| --------- | ------------- | ------- | ------- |
+| `dependabotAlerts` | `GET /repos/.../dependabot/alerts` | 1 | CVE/GHSA आईडी, पैच किए गए संस्करण, गंभीरता। |
+| `securityAdvisories` | `GET /repos/.../security-advisories` | 1 | भेद्यता विवरण के साथ रिपॉजिटरी-स्तरीय सलाह। |
+| `sbom` | `GET /repos/.../dependency-graph/sbom` | 1 | SPDX प्रारूप। पैकेज, संस्करण, लाइसेंस, पारिस्थितिकी तंत्र। |
+| `codeScanningAlerts` | `GET /repos/.../code-scanning/alerts` | 1 | CodeQL, Semgrep, आदि। नियम आईडी, फ़ाइल स्थान। |
+| `secretScanningAlerts` | `GET /repos/.../secret-scanning/alerts` | 1 | लीक हुए टोकन/कुंजी। पुश सुरक्षा बाईपास ट्रैकिंग। |
 
-**अनुमति ट्रैकिंग:** हर टियर 3 सेक्शन एक अनुमति स्टेटस लौटाता है (`granted`, `denied`, या `not_enabled`) ताकि एजेंट को पता रहे कि क्या एक्सेसिबल है और किसके लिए उच्च अनुमति चाहिए।
+**अनुमति ट्रैकिंग:** टियर 3 का प्रत्येक अनुभाग एक अनुमति स्थिति लौटाता है (`अनुमत`, `अस्वीकृत`, या `सक्षम नहीं`) ताकि एजेंट को ठीक से पता चल सके कि क्या सुलभ है और किस चीज़ के लिए उन्नत एक्सेस की आवश्यकता है।
 
-**ग्रेसफ़ुल डिग्रेडेशन:** हर सेक्शन स्वतंत्र रूप से फ़ेच होता है। कोड स्कैनिंग पर 403 Dependabot या SBOM को ब्लॉक नहीं करता।
+**सुचारू गिरावट:** प्रत्येक अनुभाग स्वतंत्र रूप से प्राप्त किया जाता है। कोड स्कैनिंग पर 403 त्रुटि होने से Dependabot या SBOM प्रभावित नहीं होते हैं।
 
 ## उदाहरण
 
-### त्वरित रिपो ट्रायज
+### त्वरित रिपॉजिटरी जांच
 ```
 get_repo_summary({ owner: "expressjs", repo: "express" })
 ```
@@ -208,7 +215,7 @@ get_repo_summary({ owner: "expressjs", repo: "express" })
 crawl_repo({ owner: "myorg", repo: "api-server", tier: "3" })
 ```
 
-### फ़्रेमवर्क तुलना
+### फ्रेमवर्क की तुलना करें
 ```
 compare_repos({ repos: [
   { owner: "sveltejs", repo: "svelte" },
@@ -217,66 +224,70 @@ compare_repos({ repos: [
 ], aspects: ["metadata", "activity", "community"] })
 ```
 
-### इश्यूज़ को CSV में एक्सपोर्ट
+### इश्यू को CSV में निर्यात करें
 ```
 const result = crawl_repo({ owner: "myorg", repo: "app", tier: "2", sections: ["issues"] })
 export_data({ data: result, format: "csv" })
 ```
 
-### ऑर्ग-वाइड भेद्यता स्कैन
+### पूरे संगठन के लिए भेद्यता स्कैन
 ```
 crawl_org({ org: "myorg", tier: "3", alert_limit: 50 })
 ```
 
-## डेवलपमेंट
+## विकास
 
 ```bash
 npm install
-npm run typecheck    # tsc से टाइप चेक
-npm test             # vitest से टेस्ट चलाएं
-npm run build        # build/ में कंपाइल
+npm run typecheck    # Type check with tsc
+npm test             # Run tests with vitest
+npm run build        # Compile to build/
 ```
 
 ### टेस्ट कवरेज
 
 5 टेस्ट फ़ाइलों में 60 टेस्ट:
-- **वेलिडेशन** — owner/repo regex, URL पार्सिंग, एज केसेस
-- **CSV एस्केपिंग** — फ़ॉर्मूला इंजेक्शन वेक्टर, कोटिंग, स्पेशल कैरेक्टर
-- **Markdown एस्केपिंग** — पाइप और न्यूलाइन एस्केपिंग
-- **GitHub एडाप्टर** — टियर 1/2/3 फ़ेचिंग, सेक्शन फ़िल्टरिंग, एरर हैंडलिंग, परमिशन ट्रैकिंग
-- **टूल स्कीमा** — Zod वेलिडेशन, पैरामीटर डिफ़ॉल्ट्स
+- **सत्यापन** — मालिक/रिपॉजिटरी रेगुलर एक्सप्रेशन, यूआरएल पार्सिंग, किनारे के मामले
+- **CSV एस्केपिंग** — फॉर्मूला इंजेक्शन वेक्टर, उद्धरण, विशेष वर्ण
+- **मार्कडाउन एस्केपिंग** — पाइप और नई लाइन एस्केपिंग
+- **GitHub एडाप्टर** — टियर 1/2/3 प्राप्त करना, अनुभाग फ़िल्टरिंग, त्रुटि प्रबंधन, अनुमति ट्रैकिंग
+- **टूल स्कीमा** — Zod सत्यापन, पैरामीटर डिफ़ॉल्ट
 
 ## आर्किटेक्चर
 
 ```
 src/
-  index.ts              # एंट्री पॉइंट (npx के लिए shebang)
-  server.ts             # MCP सर्वर सेटअप + टूल रजिस्ट्रेशन
-  types.ts              # सभी इंटरफ़ेस, Zod स्कीमा, एरर कोड, टियर कॉन्स्टेंट्स
+  index.ts              # Entry point (shebang for npx)
+  server.ts             # MCP server setup + tool registration
+  types.ts              # All interfaces, Zod schemas, error codes, tier constants
   adapters/
-    types.ts            # प्लेटफ़ॉर्म-अज्ञेयवादी एडाप्टर इंटरफ़ेस
-    github.ts           # Octokit के माध्यम से GitHub API (टियर 1/2/3)
+    types.ts            # Platform-agnostic adapter interface
+    github.ts           # GitHub API via Octokit (Tier 1/2/3)
   tools/
-    crawlRepo.ts        # crawl_repo — सिंगल रिपो क्रॉलिंग
-    crawlOrg.ts         # crawl_org — फ़िल्टर के साथ ऑर्ग क्रॉलिंग
-    repoSummary.ts      # get_repo_summary — हल्का 4-कॉल सारांश
-    compareRepos.ts     # compare_repos — साइड-बाई-साइड तुलना
-    exportData.ts       # export_data — JSON/CSV/Markdown एक्सपोर्ट
+    crawlRepo.ts        # crawl_repo — single repo crawling
+    crawlOrg.ts         # crawl_org — org-wide crawling with filters
+    repoSummary.ts      # get_repo_summary — lightweight 4-call summary
+    compareRepos.ts     # compare_repos — side-by-side comparison
+    exportData.ts       # export_data — JSON/CSV/Markdown export
   utils/
-    logger.ts           # सिर्फ़ stderr लॉगर (stdout MCP के लिए आरक्षित)
-    errors.ts           # CrawlerError क्लास, स्ट्रक्चर्ड एरर रिस्पॉन्स
-    validation.ts       # owner/repo/URL वेलिडेशन (regex)
-    csvEscape.ts        # फ़ॉर्मूला इंजेक्शन प्रिवेंशन + CSV कोटिंग
-    mdEscape.ts         # पाइप एस्केपिंग, टेबल के लिए न्यूलाइन रिमूवल
+    logger.ts           # Stderr-only logger (stdout reserved for MCP)
+    errors.ts           # CrawlerError class, structured error responses
+    validation.ts       # Owner/repo/URL validation with regex
+    csvEscape.ts        # Formula injection prevention + CSV quoting
+    mdEscape.ts         # Pipe escaping, newline removal for tables
 ```
 
-### डिज़ाइन सिद्धांत
+### डिजाइन सिद्धांत
 
-- **सेक्शन-सेलेक्टिव फ़ेचिंग** — जो उपयोग नहीं करते उसके लिए भुगतान न करें। `sections: ["metadata", "issues"]` रिक्वेस्ट करें और सिर्फ़ वही APIs कॉल होती हैं।
-- **सुरक्षित होने पर समानांतर** — स्वतंत्र सिंगल-कॉल एंडपॉइंट्स (metadata, tree, languages, readme, community) `Promise.allSettled` से चलते हैं। पेजिनेटेड एंडपॉइंट्स अर्ली टर्मिनेशन के साथ क्रमिक रूप से चलते हैं।
-- **ग्रेसफ़ुल डिग्रेडेशन** — हर API कॉल try/catch में लिपटी है। एक विफलता डिफ़ॉल्ट वैल्यू लौटाती है, क्रॉल को कभी क्रैश नहीं करती।
-- **अनुमति जागरूकता** — टियर 3 ट्रैक करता है कि कौन से सुरक्षा एंडपॉइंट्स ने 403 vs 404 लौटाया। एजेंट अपनी एक्सेस के बारे में तर्क कर सकता है।
+- **सेक्शन-विशिष्ट डेटा प्राप्त करना** — केवल वही डेटा प्राप्त करें जिसका आप उपयोग करते हैं। `sections: ["metadata", "issues"]` का अनुरोध करें, और केवल उन्हीं एपीआई को कॉल किया जाएगा।
+- **सुरक्षित होने पर समानांतर प्रसंस्करण** — स्वतंत्र, एकल-कॉल एंडपॉइंट (मेटाडेटा, ट्री, भाषाएं, रीडमी, समुदाय) `Promise.allSettled` के माध्यम से चलते हैं। पेजिनेटेड एंडपॉइंट क्रमिक रूप से चलते हैं, और यदि आवश्यक हो तो प्रक्रिया जल्दी समाप्त हो जाती है।
+- **सुचारू रूप से काम करने की क्षमता** — प्रत्येक एपीआई कॉल को `try/catch` में लपेटा जाता है। यदि कोई त्रुटि होती है, तो एक डिफ़ॉल्ट मान वापस किया जाता है, और यह प्रक्रिया कभी भी बाधित नहीं होती है।
+- **अनुमति का ध्यान रखना** — तीसरे स्तर पर यह ट्रैक किया जाता है कि कौन से सुरक्षा एंडपॉइंट 403 (अनुमति अस्वीकृत) बनाम 404 (पृष्ठ नहीं मिला) त्रुटि वापस करते हैं। एजेंट यह समझ सकता है कि उसे किस तक पहुंच है।
 
 ## लाइसेंस
 
 [MIT](LICENSE)
+
+---
+
+यह <a href="https://mcp-tool-shop.github.io/">MCP Tool Shop</a> द्वारा बनाया गया है।
