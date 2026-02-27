@@ -284,6 +284,31 @@ src/
 - **Graceful degradation** — Every API call is wrapped in try/catch. A single failure returns a default value, never crashes the crawl.
 - **Permission awareness** — Tier 3 tracks which security endpoints returned 403 vs 404. The agent can reason about what access it has.
 
+## Security & Data Scope
+
+| Aspect | Detail |
+|--------|--------|
+| **Data touched** | GitHub repository metadata, issues, PRs, security alerts, SBOMs via authenticated API |
+| **Data NOT touched** | No telemetry. No analytics. No persistent state. No credential storage beyond runtime env var |
+| **Permissions** | Read: GitHub API via Octokit. Write: MCP tool responses via stdout only |
+| **Network** | HTTPS outbound to api.github.com. MCP stdio transport (no HTTP listeners) |
+| **Telemetry** | None collected or sent |
+
+See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+
+## Scorecard
+
+| Category | Score |
+|----------|-------|
+| A. Security | 10 |
+| B. Error Handling | 10 |
+| C. Operator Docs | 10 |
+| D. Shipping Hygiene | 10 |
+| E. Identity (soft) | 10 |
+| **Overall** | **50/50** |
+
+> Full audit: [SHIP_GATE.md](SHIP_GATE.md) · [SCORECARD.md](SCORECARD.md)
+
 ## License
 
 [MIT](LICENSE)
