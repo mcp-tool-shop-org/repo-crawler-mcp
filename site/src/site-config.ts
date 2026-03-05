@@ -15,7 +15,7 @@ export const config: SiteConfig = {
     headlineAccent: 'for AI agents.',
     description: 'Turn any GitHub repo into structured intelligence. Metadata, issues, security alerts, SBOMs — all through one tool call.',
     primaryCta: { href: '#quick-start', label: 'Get started' },
-    secondaryCta: { href: '#tools', label: 'View tools' },
+    secondaryCta: { href: 'handbook/', label: 'Read the Handbook' },
     previews: [
       { label: 'Quick scan', code: 'get_repo_summary({ owner: "facebook", repo: "react" })' },
       { label: 'Deep crawl', code: 'crawl_repo({ owner: "myorg", repo: "api", tier: "3" })' },
